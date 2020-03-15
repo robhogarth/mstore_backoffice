@@ -9,6 +9,7 @@ using System.IO;
 using System.Web;
 using System.Xml.Serialization;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using System.Net.Http.Headers;
 
 namespace backoffice
@@ -55,7 +56,8 @@ namespace backoffice
 
     public partial class InventoryItem
     {
-        public List<InventoryItemElement> InventoryItems { get; set; }
+        [JsonProperty("inventory_items")]
+        public InventoryItemElement[] InventoryItems { get; set; }
     }
 
     public partial class InventoryItemElement
@@ -70,10 +72,9 @@ namespace backoffice
         public object ProvinceCodeOfOrigin { get; set; }
         public object HarmonizedSystemCode { get; set; }
         public bool Tracked { get; set; }
-        public List<object> CountryHarmonizedSystemCodes { get; set; }
+        public object[] CountryHarmonizedSystemCodes { get; set; }
         public string AdminGraphqlApiId { get; set; }
     }
-
 
     public class metawrapper
     {
@@ -307,8 +308,9 @@ namespace backoffice
             string uri = @"https://monpearte-it-solutions.myshopify.com/admin/api/2020-01/inventory_items.json?ids=" + prod_id;
 
             HttpResponseMessage response = await client.GetAsync(uri);
+            string resp_content = await response.Content.ReadAsStringAsync();
 
-            InventoryItem retvals = JsonConvert.DeserializeObject<InventoryItem>(await response.Content.ReadAsStringAsync());
+            InventoryItem retvals = JsonConvert.DeserializeObject<InventoryItem>(resp_content);
 
             retval = retvals.InventoryItems.FirstOrDefault();
                                     
@@ -332,8 +334,12 @@ namespace backoffice
              * apply margin to new cost price to determine new sell price
              * test to ensure this is not more than the RRP
             */
-
+           
             double current_margin = (Convert.ToDouble(current_price) / Convert.ToDouble(current_cost));
+            if ((1 - current_margin) < 0.1 )
+            {
+                current_margin = 1.1;
+            }
 
             double sell_price = Convert.ToDouble(new_cost) * current_margin;
 
@@ -343,7 +349,18 @@ namespace backoffice
             { throw new Exception("Sell price can't be less than cost price"); }
 
             if (sell_price > Convert.ToDouble(new_rrp))
-            { throw new Exception("Sell price is more than rrp price"); }
+            { 
+                
+                if (current_margin > 1.1 )
+                {
+                    sell_price = Convert.ToDouble(new_cost) * 1.1;
+                }
+
+                if (sell_price > Convert.ToDouble(new_rrp))
+                {
+                    throw new Exception("Sell price is more than rrp price");
+                }
+            }
 
             return sell_price.ToString();
         }

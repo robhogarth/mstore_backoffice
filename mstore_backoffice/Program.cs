@@ -67,6 +67,7 @@ namespace mstore_backoffice
                 LogStr("No Option detected.  Ending");
             }
 
+            LogStr("Completed Processing.  Ending");
             Console.ReadKey();
 
         }
@@ -121,6 +122,10 @@ namespace mstore_backoffice
 
         public static async void UpdatePricing()
         {
+            shopify = new Shopify_Products();
+            await shopify.getallproducts();
+           
+            Shopify_Product product = null;
             if (Download_MMT())
             {
                 if (await Download_Shopify())
@@ -128,80 +133,88 @@ namespace mstore_backoffice
                     bool match = false;
                     string new_price = "";
 
+                    Shopify_Product matcheditem;
+
                     MMTPriceListProducts mmtproducts = (MMTPriceListProducts)pricelist.Items[1];
 
                     foreach (MMTPriceListProductsProduct mmt_prod in mmtproducts.Product)
                     {
+                        matcheditem = null;
 
-                        foreach (Shopify_Product product in shopify.products)
+                        foreach (Shopify_Product s_product in shopify.products)
                         {
                             match = false;
 
-                            if (product.handle.ToLower() == mmt_prod.Manufacturer[0].ManufacturerCode.ToLower())
+                            if (s_product.handle.ToLower() == mmt_prod.Manufacturer[0].ManufacturerCode.ToLower())
                             {
+                                
                                 match = true;
+                                product = s_product;
                                 break;
                             }
                             else
                             {
-                                if (product.variants.FirstOrDefault().sku.ToLower() == mmt_prod.Manufacturer[0].ManufacturerCode.ToLower())
+                                if (s_product.variants.FirstOrDefault().sku.ToLower() == mmt_prod.Manufacturer[0].ManufacturerCode.ToLower())
                                 {
                                     match = true;
+                                    product = s_product;
                                     break;
                                 }
 
                             }
+                        }
 
-                            if (match)
+                        if (match)
+                        {
+
+                            InventoryItemElement inv = await shopify.Get_InventoryItem(product.variants.FirstOrDefault().inventory_item_id.ToString());
+
+                            if (inv != null)
                             {
+                                /*  You have MMT Product
+                                    *  You have Shopify product and cost price
+                                    *  
+                                    *  So now test if RRPBuy and Cost Price are the same
+                                    *  
+                                    *  If they are, then nothing needs to be done
+                                    *  If they aren't then we need to adjust pricing
+                                */
 
-                                InventoryItemElement inv = await shopify.Get_InventoryItem(product.variants.FirstOrDefault().id.ToString());
-
-                                if (inv != null)
+                                if((product.variants.FirstOrDefault().compare_at_price != mmt_prod.Pricing[0].RRPInc) || (inv.Cost != mmt_prod.Pricing[0].YourPrice))
                                 {
-                                    /*  You have MMT Product
-                                     *  You have Shopify product and cost price
-                                     *  
-                                     *  So now test if RRPBuy and Cost Price are the same
-                                     *  
-                                     *  If they are, then nothing needs to be done
-                                     *  If they aren't then we need to adjust pricing
+                                    //LogStr(String.Format(@"""{0}"",""{1}"",""{2}"", Match Found, Price Not Equal", product.handle, product.title, mmt_prod.Manufacturer[0].ManufacturerCode));
 
-
-                                    */
-
-                                    if((product.variants.FirstOrDefault().compare_at_price != mmt_prod.Pricing[0].RRPInc) || (inv.Cost != mmt_prod.Pricing[0].YourPrice))
+                                    try
                                     {
-                                        LogStr(String.Format(@"""{0}"",""{1}"",""{2}"", Match Found, Price Not Equal", product.handle, product.title, mmt_prod.Manufacturer[0].ManufacturerCode));
+                                        new_price = shopify.createnewprice(inv.Cost, product.variants.FirstOrDefault().compare_at_price, product.variants.FirstOrDefault().price, mmt_prod.Pricing[0].YourPrice, mmt_prod.Pricing[0].RRPInc);
 
-                                        try
-                                        {
-                                            new_price = shopify.createnewprice(inv.Cost, product.variants.FirstOrDefault().compare_at_price, product.variants.FirstOrDefault().price, mmt_prod.Pricing[0].YourPrice, mmt_prod.Pricing[0].RRPInc);
-                                            LogStr(String.Format(@"""{0}"",""{1}"",""{2}"", Match Found Price Not Equal Creating New Price", product.handle, product.title, new_price));
+                                        string[] formatlist = { product.handle, product.title, new_price, mmt_prod.Pricing[0].YourPrice, mmt_prod.Pricing[0].RRPInc };
 
-                                            shopify.updateprice(product.handle, new_price, mmt_prod.Pricing[0].YourPrice, mmt_prod.Pricing[0].RRPInc);
+                                        LogStr(String.Format(@"""{0}"",""{1}"",""{2}"",""{3}"",""{4}"", Match Found Price Not Equal Creating New Price", formatlist));
+                                           
+                                        //shopify.updateprice(product.handle, new_price, mmt_prod.Pricing[0].YourPrice, mmt_prod.Pricing[0].RRPInc);
 
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            LogStr(@""" + product.handle + "","" + ex.message + """);
-                                        }
                                     }
-                                    else
+                                    catch (Exception ex)
                                     {
-                                        LogStr(String.Format(@"""{0}"",""{1}"",""{2}"", Match Found, Price Equal", product.handle, product.title, mmt_prod.Manufacturer[0].ManufacturerCode));
+                                        LogStr(String.Format(@"""{0}"",""{1}""", product.handle, ex.Message));
                                     }
+                                }
+                                else
+                                {
+                                    //LogStr(String.Format(@"""{0}"",""{1}"",""{2}"", Match Found, Price Equal", product.handle, product.title, mmt_prod.Manufacturer[0].ManufacturerCode));
                                 }
                             }
 
-
-                            
+                            //if you've match an item in then remove it from the shopify list to reduce search time
+                            matcheditem = product;
                         }
-                        
+
+                        if (matcheditem != null)
+                        {
+                            shopify.products.Remove(product);
+                        }                     
                     }
-
-
-
                 }
             }
         }
@@ -261,7 +274,6 @@ namespace mstore_backoffice
             return retval;
         }
 
-
         private static async void Update_Metafields()
         {
 
@@ -279,15 +291,10 @@ namespace mstore_backoffice
         
         }
 
-        private static async void Update_Pricing()
-        {
-        }
-
-            public static void LogStr(string message)
+        public static void LogStr(string message)
         {
             Console.WriteLine(message);
         }
-
 
     }
 }
