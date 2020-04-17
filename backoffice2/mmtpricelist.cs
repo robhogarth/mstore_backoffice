@@ -1,6 +1,7 @@
 ﻿using System.Xml.Serialization;
 using System.Net;
 using System.IO;
+using System.Threading.Tasks;
 using System;
 
 
@@ -55,6 +56,24 @@ public partial class MMTPriceList
         }
     }
 
+    public async static Task<MMTPriceList> loadFromURLAsync(string datafeedurl)
+    {
+
+        try
+        {
+            WebClient client = new WebClient();
+            client.Headers.Add(HttpRequestHeader.ContentType, "apoplication/xml");
+            string response = await client.DownloadStringTaskAsync(datafeedurl);
+
+            XmlSerializer serial = new XmlSerializer(typeof(MMTPriceList));
+            return (MMTPriceList)serial.Deserialize(new StringReader(response));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            return null;
+        }
+    }
 
 
 }
@@ -171,6 +190,9 @@ public partial class MMTPriceListProductsProduct
             this.ETAField = value;
         }
     }
+
+    [System.Xml.Serialization.XmlElementAttribute("Status")]
+    public MMTPriceListProductsProductStatus[] Status { get; set; }
 
     /// <remarks/>
     [System.Xml.Serialization.XmlElementAttribute("Manufacturer")]
@@ -323,6 +345,30 @@ public partial class MMTPriceListProductsProductCategory
         }
     }
 }
+
+[System.CodeDom.Compiler.GeneratedCodeAttribute("xsd", "4.8.3928.0")]
+[System.SerializableAttribute()]
+[System.Diagnostics.DebuggerStepThroughAttribute()]
+[System.ComponentModel.DesignerCategoryAttribute("code")]
+[System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "https://www.mmt.com.au")]
+public partial class MMTPriceListProductsProductStatus
+{
+    private string statusNameField;
+
+    public string StatusName
+    {
+        get
+        {
+            return this.statusNameField;
+        }
+        set
+        {
+            this.statusNameField = value;
+        }
+    }
+    
+}
+
 
 /// <remarks/>
 [System.CodeDom.Compiler.GeneratedCodeAttribute("xsd", "4.8.3928.0")]
