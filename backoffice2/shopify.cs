@@ -713,12 +713,13 @@ namespace backoffice
         public string addgst(string price)
         {
             double tax_price = Convert.ToDouble(price);
-            return (string)(addgst(tax_price)).ToString();
+            return addgst(tax_price).ToString("0.00");
+// return String.Format("{0:.##}",addgst(tax_price));
         }
 
         public double addgst(double price)
         {
-            return (price * 1.1);
+            return Math.Round(price * 1.1,2);
         }
 
         public async Task<InventoryLevels> Get_InventoryLevelsList(object inv_id)
@@ -774,10 +775,18 @@ namespace backoffice
             double current_margin = (Convert.ToDouble(current_price) / Convert.ToDouble(current_cost));
 
             double sell_price = Convert.ToDouble(new_cost) * current_margin;
+                        
+            if ((sell_price > 10) & (sell_price < 100))
+            {
+                sell_price = Math.Round(sell_price / 0.5) * 0.5;
+            }
 
-            sell_price = Math.Round(sell_price, 2);
+            if ((sell_price > 100))
+            {
+                sell_price = Math.Round(sell_price);
+            }
 
-            if(sell_price < Convert.ToDouble(new_cost))
+            if (sell_price < Convert.ToDouble(new_cost))
             { throw new Exception("Sell price can't be less than cost price"); }
 
             if ((sell_price > Convert.ToDouble(new_rrp)) & (Convert.ToDouble(new_rrp) != 0))
@@ -793,7 +802,17 @@ namespace backoffice
                     throw new Exception("Sell price is more than rrp price");
                 }
             }
-            
+
+            if ((sell_price > 10) & (sell_price < 100))
+            {
+                sell_price = Math.Round(sell_price / 0.5) * 0.5;
+            }
+
+            if ((sell_price > 100))
+            {
+                sell_price = Math.Round(sell_price);
+            }
+
             return sell_price.ToString();
         }
 
