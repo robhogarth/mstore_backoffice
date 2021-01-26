@@ -7,8 +7,8 @@
     <ProjectGuid>{EDD9D5F9-F39F-42F8-8465-D528BF4D8FB5}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>backoffice2</RootNamespace>
-    <AssemblyName>backoffice2</AssemblyName>
+    <RootNamespace>backoffice</RootNamespace>
+    <AssemblyName>backoffice</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -31,6 +31,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.12.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -44,10 +45,24 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="common.cs" />
+    <Compile Include="mbot.cs" />
     <Compile Include="mmtpricelist.cs" />
     <Compile Include="mmtproducts.cs" />
+    <Compile Include="products.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="shopify.cs" />
+    <Compile Include="ShopifyAPI\InventoryItem.cs" />
+    <Compile Include="ShopifyAPI\shopify.cs" />
+    <Compile Include="ShopifyAPI\Image.cs" />
+    <Compile Include="ShopifyAPI\Inventory_Levels.cs" />
+    <Compile Include="ShopifyAPI\Locations.cs" />
+    <Compile Include="ShopifyAPI\Option.cs" />
+    <Compile Include="ShopifyAPI\Price.cs" />
+    <Compile Include="ShopifyAPI\Product.cs" />
+    <Compile Include="ShopifyAPI\Shop_API.cs" />
+    <Compile Include="ShopifyAPI\Variant.cs" />
+    <Compile Include="ShopifyAPI\wrappers.cs" />
+    <Compile Include="supplier.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

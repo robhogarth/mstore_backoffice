@@ -7,7 +7,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mstore_backoffice", "mstore
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "mstore_backoffice_gui", "mstore_backoffice_gui\mstore_backoffice_gui.csproj", "{36E80A68-B1FB-4BFE-B7A8-747B39FE39CC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "backoffice2", "backoffice2\backoffice2.csproj", "{EDD9D5F9-F39F-42F8-8465-D528BF4D8FB5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "backoffice", "backoffice2\backoffice.csproj", "{EDD9D5F9-F39F-42F8-8465-D528BF4D8FB5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "cloudlogging", "cloudlogging\cloudlogging.csproj", "{74C7BC7A-20EE-4712-A991-942D9F721082}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "backoffice_test", "backoffice_test\backoffice_test.csproj", "{688EBFEC-3D17-4241-B419-4CE4FE16A267}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +31,14 @@ Global
 		{EDD9D5F9-F39F-42F8-8465-D528BF4D8FB5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EDD9D5F9-F39F-42F8-8465-D528BF4D8FB5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EDD9D5F9-F39F-42F8-8465-D528BF4D8FB5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{74C7BC7A-20EE-4712-A991-942D9F721082}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{74C7BC7A-20EE-4712-A991-942D9F721082}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{74C7BC7A-20EE-4712-A991-942D9F721082}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{74C7BC7A-20EE-4712-A991-942D9F721082}.Release|Any CPU.Build.0 = Release|Any CPU
+		{688EBFEC-3D17-4241-B419-4CE4FE16A267}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{688EBFEC-3D17-4241-B419-4CE4FE16A267}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{688EBFEC-3D17-4241-B419-4CE4FE16A267}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{688EBFEC-3D17-4241-B419-4CE4FE16A267}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

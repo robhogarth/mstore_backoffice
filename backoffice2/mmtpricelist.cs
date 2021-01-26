@@ -139,17 +139,11 @@ public partial class MMTPriceListProductsProduct
 {
 
     private string mMTCodeField;
-
     private string availabilityField;
-
     private string ETAField;
-
     private MMTPriceListProductsProductManufacturer[] manufacturerField;
-
     private MMTPriceListProductsProductCategory[] categoryField;
-
     private MMTPriceListProductsProductDescription[] descriptionField;
-
     private MMTPriceListProductsProductPricing[] pricingField;
 
     /// <remarks/>

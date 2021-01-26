@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("backoffice2")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("backoffice")]
+[assembly: AssemblyDescription("mstore shared backoffice libraries")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("backoffice2")]
+[assembly: AssemblyCompany("Monpearte IT Solutions")]
+[assembly: AssemblyProduct("backoffice")]
 [assembly: AssemblyCopyright("Copyright ©  2020")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]

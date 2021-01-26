@@ -3,32 +3,53 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:mstore_backoffice_gui"
+        xmlns:local="clr-namespace:mstore_backoffice_gui"      
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="250" />
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
+            <RowDefinition Height="75"/>
+            <RowDefinition Height="100"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="30"/>
         </Grid.RowDefinitions>
-        
-        
-        <StackPanel HorizontalAlignment="Stretch"  VerticalAlignment="Top" Grid.Column="0" Grid.Row="0">
-            <Button Content="Download MMT Pricelist" Margin="10" Width="200" Click="Button_Click"/>
-            <Button Content="Download Spotify Products" Margin="10" Width="200" Click="Button_Click_1"/>
-            <Button Content="Find unmatched items" Margin="10" Width="200" Click="Button_Click_2"/>
-            <Button Content="ETA Metafield Update" Margin="10" Width="200" Click="Button_Click_3"/>
-            <Label Name="StackPanelLabel" Content="Ready" Margin="10" HorizontalAlignment="Center"/>
 
-
+        <StackPanel Orientation="Horizontal" Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <TextBox Name="SearchBox" Width="400"></TextBox>
+            <Button Click="Button_Click_4">Search</Button>
+            <Button Click="Button_Click_5" Margin="20,0,0,0">Update</Button>
+            <Button Margin="20,0,0,0" Click="Button_Click">NewMeta</Button>
         </StackPanel>
-        <TextBox TextWrapping="NoWrap" Name="TextBlock_Results" Text="TextBlock_Results" Grid.Column="1" Grid.Row="0" Padding="5"/>
 
-        <StatusBar Height="30" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Grid.Row="1" Grid.ColumnSpan="2">
+        <DataGrid Grid.Row="1" Name="Shopify_Grid" SelectionChanged="Shopify_Grid_SelectionChanged">
+        </DataGrid>
+
+        <Border x:Name="border1" DataContext="{Binding prod_avail}" Grid.Row="2" >
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Label Grid.Column="0" Grid.Row="0" HorizontalContentAlignment="Right" Margin="5">Availability:</Label>
+                <TextBox Name="Availability_text" Text="{Binding Path=availability, Mode=TwoWay}" Grid.Column="1" Grid.Row="0" MinWidth="100"></TextBox>
+
+                <Label Grid.Column="0" Grid.Row="1" HorizontalContentAlignment="Right" Margin="5">ETA:</Label>
+                <TextBox Name="ETA_text" Text="{Binding Path=eta, Mode=TwoWay}" Grid.Column="1"  Grid.Row="1"></TextBox>
+
+                <Label Grid.Column="0" Grid.Row="2" HorizontalContentAlignment="Right" Margin="5">Status:</Label>
+                <TextBox Name="status_text" Text="{Binding status}" Grid.Column="1"  Grid.Row="2"></TextBox>
+            </Grid>
+        </Border>
+        <StatusBar Height="30" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Grid.Row="3">
             <StatusBarItem>
                 <Label Name="StatusBarLabel"></Label>
             </StatusBarItem>
