@@ -35,17 +35,23 @@ namespace backoffice.ShopifyAPI
         {
 
             bool retval = false;
-            IEnumerable<string> ratelimit_header = headers.GetValues("X-Shopify-Shop-Api-Call-Limit");
-            string ratelimit_text = ratelimit_header.FirstOrDefault();
-
-            int remainingrequests = Convert.ToInt32(ratelimit_text.Substring(0, ratelimit_text.IndexOf("/")));
-
-            if (remainingrequests > 35)
+            try
             {
-                retval = true;
+                IEnumerable<string> ratelimit_header = headers.GetValues("X-Shopify-Shop-Api-Call-Limit");
+                string ratelimit_text = ratelimit_header.FirstOrDefault();
+
+                int remainingrequests = Convert.ToInt32(ratelimit_text.Substring(0, ratelimit_text.IndexOf("/")));
+
+                if (remainingrequests > 35)
+                {
+                    retval = true;
+                    await Task.Delay(ratelimit);
+                }
+            }
+            catch (Exception ex)
+            {
                 await Task.Delay(ratelimit);
             }
-
             return retval;
         }
 
@@ -63,7 +69,7 @@ namespace backoffice.ShopifyAPI
             client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
         }
 
-        public async Task<bool> updatetags(object id, string tags)
+        public async Task<bool> UpdateTags(object id, string tags)
         {
             string uturi = url_prefix + "/products/" + id.ToString() + ".json";
 
@@ -85,21 +91,16 @@ namespace backoffice.ShopifyAPI
                 writer.WriteEndObject();
             }
 
-            HttpContent content = new StringContent(sw.ToString(), Encoding.UTF8, "application/json");
-
-            return common.IsStatusCodeSuccess(await put_product_data(uturi, content));
+            return common.IsStatusCodeSuccess(await Put_Product_Data(uturi, sw.ToString()));
         }
 
         public async Task<Locations> GetLocations()
         {
-
             string gl_uri = url_prefix + "/locations.json";
-
             Locations retval;
 
-            HttpResponseMessage response = await client.GetAsync(gl_uri);
-
-            retval = JsonConvert.DeserializeObject<Locations>(await response.Content.ReadAsStringAsync());
+            string response = await API_Get_Data(gl_uri);
+            retval = JsonConvert.DeserializeObject<Locations>(response);
 
             return retval;
         }
@@ -110,9 +111,7 @@ namespace backoffice.ShopifyAPI
 
             InventoryLevels retval;
 
-            HttpResponseMessage response = await client.GetAsync(gl_uri);
-
-            string content = await response.Content.ReadAsStringAsync();
+            string content = await API_Get_Data(gl_uri);
 
             retval = JsonConvert.DeserializeObject<InventoryLevels>(content);
 
@@ -124,10 +123,10 @@ namespace backoffice.ShopifyAPI
             string gl_uri = url_prefix + "/inventory_items.json?ids=" + InventoryItem;
 
             InventoryItems retval;
-            
-            HttpResponseMessage response = await client.GetAsync(gl_uri);
 
-            retval = JsonConvert.DeserializeObject<InventoryItems>(await response.Content.ReadAsStringAsync());
+            string content = await API_Get_Data(gl_uri);
+
+            retval = JsonConvert.DeserializeObject<InventoryItems>(content);
 
             return retval;
         }
@@ -151,7 +150,7 @@ namespace backoffice.ShopifyAPI
                 writer.WriteEndObject();
             }
 
-            return common.IsStatusCodeSuccess(await post_product_data(uturi, sw.ToString()));
+            return common.IsStatusCodeSuccess(await Post_Product_Data(uturi, sw.ToString()));
         }
 
         public async Task<bool> Remove_InventoryItemLocation(object inv_id, long location_id)
@@ -187,12 +186,39 @@ namespace backoffice.ShopifyAPI
             else
                 uri = url_prefix + "/products/" + productID + "/metafields.json";
 
-            HttpResponseMessage response = await client.GetAsync(uri);
-
-            string content = await response.Content.ReadAsStringAsync();
-
+            string content = await API_Get_Data(uri);
+                        
             GetMetafields retval = JsonConvert.DeserializeObject<GetMetafields>(content);
 
+            return retval;
+        }
+
+        private async Task<string> API_Get_Data(string uri)
+        {
+            bool retry = true;
+            string content = "";
+            HttpResponseMessage response = new HttpResponseMessage();
+
+            while (retry)
+            {
+                response = await client.GetAsync(uri);
+                retry = await TooManyRequests(response.Headers, response.ReasonPhrase);              
+            }
+
+            content = await response.Content.ReadAsStringAsync();
+
+            return content;
+        }
+
+        private async Task<bool> TooManyRequests(HttpResponseHeaders headers, string ReasonPhrase)
+        {
+            bool retval = false;
+
+            if (ReasonPhrase == "Too Many Requests")
+            {
+                await check_ratelimit(headers);
+                retval = true;
+            }
 
             return retval;
         }
@@ -201,9 +227,6 @@ namespace backoffice.ShopifyAPI
         {
             List<Metafield> mwrapper = new List<Metafield>();
             var tasks = new List<Task<string>>();
-
-            int failed = 0;
-
             string retval = "";
 
             mwrapper.Add(new Metafield("mstore", "availability", availability, "string"));
@@ -241,7 +264,7 @@ namespace backoffice.ShopifyAPI
                 {
 
 
-                    retval += await post_product_data(uri, content);
+                    retval += await Post_Product_Data(uri, content);
                     //retval += "Debug Only";
                 }
                 catch (Exception ex)
@@ -270,33 +293,65 @@ namespace backoffice.ShopifyAPI
             return retval;
         }
 
-        public async Task<HttpStatusCode> post_product_data(string uri, string content)
+        public async Task<HttpStatusCode> Put_Product_Data(string uri, string content)
         {
             bool postretry = true;
             HttpResponseMessage response;
             HttpStatusCode retval = HttpStatusCode.Unused;
-            //client.Timeout = TimeSpan.FromMinutes(30);
-            int count = 0;
-            bool m = false;
-            
+
             while (postretry)
             {
-                count++;
-
-                if (count > 1)
-                {
-                    m = true;
-                }
-
-
                 try
                 {
                     HttpContent hcontent = new StringContent(content, Encoding.UTF8, "application/json");
-                    response = await post_data(uri, hcontent);
+                    response = await Put_Data(uri, hcontent);
                 }
                 catch (Exception ex)
                 {
-                    throw new Exception("Error in post_product_data " + ex.Message + count.ToString());
+                    throw new Exception("Error in post_product_data " + ex.Message);
+                }
+
+                retval = response.StatusCode;
+                if (response.StatusCode == HttpStatusCode.OK)
+                {
+                    postretry = false;
+
+                    await check_ratelimit(response.Headers);
+                }
+                else
+                {
+
+                    if (response.ReasonPhrase == "Too Many Requests")
+                    {
+                        await Task.Delay(ratelimit);
+                    }
+                    else
+                    {
+                        postretry = false;
+                        throw new Exception("Unable to post_product_data. " + response.StatusCode.ToString() + " - " + await response.Content.ReadAsStringAsync());
+                    }
+                }
+            }
+
+            return retval;
+        }
+
+        public async Task<HttpStatusCode> Post_Product_Data(string uri, string content)
+        {
+            bool postretry = true;
+            HttpResponseMessage response;
+            HttpStatusCode retval = HttpStatusCode.Unused;
+            
+            while (postretry)
+            {
+                try
+                {
+                    HttpContent hcontent = new StringContent(content, Encoding.UTF8, "application/json");
+                    response = await Post_Data(uri, hcontent);
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception("Error in post_product_data " + ex.Message);
                 }
 
                 retval = response.StatusCode;
@@ -319,16 +374,37 @@ namespace backoffice.ShopifyAPI
                         throw new Exception("Unable to post_product_data. " + response.StatusCode.ToString() + " - " + await response.Content.ReadAsStringAsync());
                     }
                 }
-
             }
 
             return retval;
         }
 
-        private async Task<HttpResponseMessage> post_data(string uri, HttpContent hcontent)
+
+        private async Task<HttpResponseMessage> Put_Data(string uri, HttpContent hcontent)
         {
             HttpResponseMessage response;
-            HttpStatusCode retval = HttpStatusCode.Unused;
+            HttpClient mclient = new HttpClient();
+
+            var byteArray = Encoding.ASCII.GetBytes(username + ":" + password);
+
+            mclient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
+
+            try
+            {
+                response = await mclient.PutAsync(uri, hcontent);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error Posting Data", ex);
+            }
+
+            return response;
+
+        }
+
+        private async Task<HttpResponseMessage> Post_Data(string uri, HttpContent hcontent)
+        {
+            HttpResponseMessage response;
             HttpClient mclient = new HttpClient();
 
             var byteArray = Encoding.ASCII.GetBytes(username + ":" + password);
@@ -390,7 +466,6 @@ namespace backoffice.ShopifyAPI
             var byteArray = Encoding.ASCII.GetBytes(username + ":" + password);
             mclient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(byteArray));
 
-
             bool postretry = true;
             HttpResponseMessage response;
 
@@ -424,70 +499,6 @@ namespace backoffice.ShopifyAPI
             }
 
             return retval;
-        }
-
-        public async Task<bool> UpdateMbot(object id, string tags = "", bool noupdate = false)
-        {
-            const string mbot_prefix = "Mbot_";
-            string newtags = tags;
-            bool replaced_mbot = false;
-            string temp_str;
-            List<string> newtagslist = new List<string>();
-
-            if (newtags == "")
-            {
-                newtags = await getTags(id);
-            }
-
-            //generate new mbot string
-            string mbot_newtag = mbot_prefix + DateTime.Now.ToString();
-            mbot_newtag = mbot_newtag.Replace(' ', '_');
-
-            //split to array
-            string[] array_tags = newtags.Split(',');
-
-            //replace existing mbot tag
-            for (int i = array_tags.Length - 1; i >= 0; i--)
-            {
-                temp_str = array_tags[i];
-                temp_str = temp_str.Trim();
-
-                if (temp_str.StartsWith(mbot_prefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    if (!replaced_mbot)
-                    {
-                        newtagslist.Add(mbot_newtag);
-                        replaced_mbot = true;
-                    }
-                }
-                else
-                {
-                    newtagslist.Add(temp_str);
-                }
-            }
-
-            //or add tag
-            if (!replaced_mbot)
-            {
-                newtagslist.Add(mbot_newtag);
-            }
-
-            bool update_retval = false;
-
-            if (!noupdate)
-            {
-                newtags = "";
-
-                foreach (string listtag in newtagslist)
-                {
-                    newtags += listtag + ", ";
-                }
-
-                newtags = newtags.Substring(0, newtags.Length - 2);
-                update_retval = await updatetags(id, newtags);
-            }
-
-            return update_retval;
         }
 
         private Task<string> getTags(object id)

@@ -34,9 +34,6 @@ namespace backoffice
         //Base Properties of supplier
         public List<Product> Products { get; set; }
         public abstract Task<int> LoadProducts();
-        
-        public bool IncGSTRRP = false;
-        public bool IncGSTCost = false;
         public abstract long Supplier_Location_Id { get; }
         public abstract string Supplier_Tag { get; }
         public abstract string CollectionID { get; }
@@ -79,7 +76,6 @@ namespace backoffice
 
         public string[] mmtdatafeed = { "https://www.mmt.com.au/datafeed/index.php?lt=s&ft=xml&tk=94M0C1O223NF7AI59BS94903AC004E0B4A%20D09%2083A%2046B%20D80%20648%2031F%2075D%20665F9461C558F25AE&af[]=et&af[]=st", "https://www.mmt.com.au/datafeed/index.php?lt=c&ft=xml&tk=94M0C1O223NF7AI59BS94903AC004E0B4A%20D09%2083A%2046B%20D80%20648%2031F%2075D%20665F9461C558F25AE&af[]=et&af[]=st" };
         public MMTDownloadType DownloadType = MMTDownloadType.Standard;
-        public new bool IncGSTRRP = true;
         public override long Supplier_Location_Id { get { return 41088974985; } }
         public override string Supplier_Tag { get {return "MMTShipping"; } }
         public override string CollectionID { get { return "235730206870"; } }

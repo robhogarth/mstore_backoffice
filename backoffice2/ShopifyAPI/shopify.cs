@@ -498,12 +498,6 @@ namespace backoffice.ShopifyAPI
             
             Shopify_Product retval = null;
 
-            if (handle == "MU-PB500B/WW")
-            {
-                int i = 0;
-                i = 1;
-            }
-
             sku = sku.ToLower();
 
             handle = replace_specialchars(handle);
@@ -532,7 +526,6 @@ namespace backoffice.ShopifyAPI
         public Shopify_Product MatchProductBySupplier(Product supplier_prod)
         {
             Shopify_Product retval = null;
-
             string sku = supplier_prod.SKU.ToLower();
 
             foreach (Shopify_Product prod in products)
@@ -548,7 +541,6 @@ namespace backoffice.ShopifyAPI
                     retval = prod;
                     break;
                 }
-
             }
 
             return retval;
@@ -560,10 +552,7 @@ namespace backoffice.ShopifyAPI
 
             try
             {
-                
-
                 sku = sku.ToLower();
-
                 handle = replace_specialchars(handle);
 
                 foreach (Product prod in prods)
@@ -696,9 +685,9 @@ namespace backoffice.ShopifyAPI
             return retval;
         }
 
-        public async Task<bool> updatetags(object id, string tags)
+        public async Task<bool> UpdateTags(object id, string tags)
         {
-            return await API.updatetags(id, tags);
+            return await API.UpdateTags(id, tags);
         }
 
         public async Task<HttpStatusCode> post_product_data(string uri, HttpContent hcontent)
@@ -870,18 +859,15 @@ namespace backoffice.ShopifyAPI
         }
 
 
-        public async Task<string> update_availability(Shopify_Product shop_prod, Product supplier_product)
+        public async Task<string> Update_Availability(Shopify_Product shop_prod, Product supplier_product)
         {
             //update mbot tags
-            _ = API.UpdateMbot(shop_prod.Id, shop_prod.Tags);
+            _ = API.UpdateTags(shop_prod.Id, common.Updatembot(shop_prod.Tags));
 
             string retval = await API.UpdateProductETAMetafields(shop_prod.Id.ToString(), supplier_product.Available.ToString(), supplier_product.ETA.ToString(), supplier_product.Status);
 
             return retval;
         }
-
-
-
         
         public async Task<string> update_availability(string handle, string availability, string eta, bool skipprodcheck = false, string sku = "", string MMTStatus = "", string tags = "")
         {
@@ -913,9 +899,11 @@ namespace backoffice.ShopifyAPI
                 {
                     uri = @"https://monpearte-it-solutions.myshopify.com/admin/api/2020-01/products/" + a_prod.Id + "/metafields.json";
 
-                    //update mbot tags
-                    //await UpdateMbot(a_prod.Id, a_prod.Tags);
                 }
+                
+                //update mbot tags
+                if (tags != "")
+                    await API.UpdateTags(handle, common.Updatembot(tags));
 
 
                 if (eta == null)
@@ -934,8 +922,8 @@ namespace backoffice.ShopifyAPI
 
                     try
                     {
-                        //retval += await post_product_data(uri, hcontent);
-                        retval += "Debug Only";
+                        retval += await post_product_data(uri, hcontent);
+                        //retval += "Debug Only";
                     }
                     catch (Exception ex)
                     {
@@ -976,7 +964,6 @@ namespace backoffice.ShopifyAPI
 
             return retval;
         }
-
 
         public async Task<bool> unpublishitem(object id)
         {
@@ -1082,7 +1069,7 @@ namespace backoffice.ShopifyAPI
                 string inv_content = JsonConvert.SerializeObject(inv_wrapper, Formatting.Indented);
                 var inv_hcontent = new StringContent(inv_content, Encoding.UTF8, "application/json");
 
-                retStatusCode = await put_product_data(inv_uri, inv_hcontent);
+                retStatusCode = await API.put_product_data(inv_uri, inv_hcontent);
 
                 if (common.IsStatusCodeSuccess(retStatusCode))
                     retcostprice = true;
@@ -1124,60 +1111,19 @@ namespace backoffice.ShopifyAPI
             return retval;
         }
 
-        public async Task<InventoryItem> Get_InventoryItem(string prod_id)
+        public async Task<InventoryItems> Get_InventoryItem(string prod_id)
         {
-            InventoryItem retval = null;
-
-            string uri = @"https://monpearte-it-solutions.myshopify.com/admin/api/2020-01/inventory_items.json?ids=" + prod_id;
-
-            HttpResponseMessage response = await client.GetAsync(uri);
-            string resp_content = await response.Content.ReadAsStringAsync();
-
-            InventoryItems retvals = JsonConvert.DeserializeObject<InventoryItems>(resp_content);
-
-            retval = retvals.Items.FirstOrDefault();
-                                    
-            IEnumerable<string> ratelimit_header = response.Headers.GetValues("X-Shopify-Shop-Api-Call-Limit");
-            string ratelimit_text = ratelimit_header.FirstOrDefault();
-
-            int remainingrequests = Convert.ToInt32(ratelimit_text.Substring(0, ratelimit_text.IndexOf("/")));
-
-            if (remainingrequests > 35)
-            {
-                await Task.Delay(ratelimit);
-            }
-
-            return retval;
+            throw new NotImplementedException();
         }
 
-
-        public async Task<bool> Delete_InventoryItemLocation(object inv_id, long location_id)
+        public async Task<bool> Remove_InventoryItemLocation(object inv_id, long location_id)
         {
             return await API.Remove_InventoryItemLocation(inv_id, location_id);
         }
 
         public async Task<bool> Set_InventoryItemLocation(object inv_id, long location_id)
         {
-            string uturi = @"https://monpearte-it-solutions.myshopify.com/admin/api/2020-04/inventory_levels/connect.json";
-
-            StringBuilder sb = new StringBuilder();
-            StringWriter sw = new StringWriter(sb);
-
-            using (JsonWriter writer = new JsonTextWriter(sw))
-            {
-                writer.Formatting = Formatting.Indented;
-
-                writer.WriteStartObject();
-                writer.WritePropertyName("location_id");
-                writer.WriteValue(location_id);
-                writer.WritePropertyName("inventory_item_id");
-                writer.WriteValue(inv_id);
-                writer.WriteEndObject();              
-            }
-
-            HttpContent content = new StringContent(sw.ToString(), Encoding.UTF8, "application/json");
-
-            return common.IsStatusCodeSuccess(await post_product_data(uturi, content));
+            return await API.ConnectInventoryItemLocation(inv_id, location_id);
         }
 
         public async Task<bool> Change_InventoryLocation(object inv_id, long old_location, long new_location)
@@ -1190,27 +1136,28 @@ namespace backoffice.ShopifyAPI
             return result1 && result2;
         }
 
-
         //when you don't know the old location, only the new one.
         //quicker to just go through API calls to get old location for one product and not a bunch
         public async Task<bool> Change_InventoryLocation(object inv_id, long new_location)
         {
             //connect first then disconnect
-
             InventoryLevels inv_levels = await API.GetInventoryLevels(inv_id.ToString());
 
             bool result2 = await API.ConnectInventoryItemLocation(inv_id, new_location);
-
             bool result1 = false;
+            bool result3 = false;
 
             foreach (InventoryLevel iLevel in inv_levels.Levels)
             {
-                result1 = result1 && await API.Remove_InventoryItemLocation(inv_id, iLevel.LocationId);
+                if (iLevel.LocationId != new_location)
+                {
+                    result3 = await API.Remove_InventoryItemLocation(inv_id, iLevel.LocationId);
+                    result1 = result1 & result3;
+                }
             }    
 
-            return result1 && result2;
+            return result1 & result2;
         }
-
 
         public string addgst(string price)
         {
@@ -1395,77 +1342,6 @@ namespace backoffice.ShopifyAPI
             return sell_price.ToString();
         }
 
-        public async Task<bool> UpdateMbot(object id, string tags = "", bool noupdate = false)
-        {
-            const string mbot_prefix = "Mbot_";
-            string newtags = tags;
-            bool replaced_mbot = false;
-            string temp_str;
-            List<string> newtagslist = new List<string>();
-
-
-            if (newtags == "")
-            {
-                newtags = await getTags(id);
-            }
-
-            //generate new mbot string
-            string mbot_newtag = mbot_prefix + DateTime.Now.ToString();
-            mbot_newtag = mbot_newtag.Replace(' ', '_');
-
-            //split to array
-            string[] array_tags = newtags.Split(',');
-
-            
-
-            //replace existing mbot tag
-            for (int i = array_tags.Length - 1; i >= 0; i--)
-            {
-                temp_str = array_tags[i];
-                temp_str = temp_str.Trim();
-
-                if (temp_str.StartsWith(mbot_prefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    if (!replaced_mbot)
-                    {
-                        newtagslist.Add(mbot_newtag);
-                        replaced_mbot = true;
-                    }
-                }
-                else
-                {
-                    newtagslist.Add(temp_str);
-                }
-
-            }
-                                                
-            //or add tag
-            if (!replaced_mbot)
-            {
-                newtagslist.Add(mbot_newtag);
-            }
-
-            bool update_retval = false;
-
-            if (!noupdate)
-            {
-
-                newtags = "";
-
-                foreach(string listtag in newtagslist)
-                {
-                    newtags += ", " + listtag;
-
-                }
-                
-                update_retval = await updatetags(id, newtags);
-
-            }
-              
-
-            return update_retval;
-        }
-
         private Task<string> getTags(object id)
         {
             throw new NotImplementedException();
@@ -1489,7 +1365,7 @@ namespace backoffice.ShopifyAPI
             return retval;
         }
 
-        public Shopify(int ratelimit_interval = 1)
+        public Shopify(int ratelimit_interval = 1000)
         {
             API = new Shop_API(ratelimit_interval);
 

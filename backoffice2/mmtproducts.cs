@@ -35,7 +35,7 @@ namespace backoffice
             {
                 RRPInc = float.Parse(fields[5]);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 RRPInc = -1;
             }
@@ -44,7 +44,7 @@ namespace backoffice
             {
                 YourBuy = float.Parse(fields[6]);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 YourBuy = -1;
             }
@@ -53,7 +53,7 @@ namespace backoffice
             {
                 Available = int.Parse(fields[7]);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 Available = -1;
             }

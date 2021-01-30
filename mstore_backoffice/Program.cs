@@ -55,8 +55,6 @@ namespace mstore_backoffice
         static string statusfile = "";
         static SupplierType supplier = SupplierType.MMT;
 
-        static string ClearanceTag = "Clearance";
-
         static string args_help = @"Commandline args:
              /task:[updateETA|updatepricing|findunmatched|updateitemeta|updateclearance]
              /supplier:MMT|Techdata|Dickerdata|Wavelink
@@ -208,9 +206,6 @@ namespace mstore_backoffice
                         mbot.UpdateFreeShipping().Wait();
                         break;
                         */
-                    case "updatenoimage":
-                        mbot.UpdateNoImage().Wait();
-                        break;
                     case "test":
                         mbot.Test().Wait();
                         break;

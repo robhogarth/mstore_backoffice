@@ -70,7 +70,7 @@ namespace backoffice
         {
             get
             {
-                return Convert.ToDouble(this.mmtproduct.Pricing[0].YourPrice);
+                return Math.Round(Convert.ToDouble(this.mmtproduct.Pricing[0].YourPrice)*1.1,2);
             }
         }
         public override double RRPPrice

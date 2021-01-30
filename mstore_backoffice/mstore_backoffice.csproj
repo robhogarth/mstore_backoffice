@@ -127,8 +127,10 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>net use b: \\jarvis\mstore_backoffice /user:monpearte\jarvis Alejandro34#
+    <PostBuildEvent>if $(ConfigurationName) == Release (
+net use b: \\jarvis\mstore_backoffice /user:monpearte\jarvis Alejandro34#
 xcopy /E /Y $(TargetDir) b:
-net use b: /delete /y</PostBuildEvent>
+net use b: /delete /y
+)</PostBuildEvent>
   </PropertyGroup>
 </Project>

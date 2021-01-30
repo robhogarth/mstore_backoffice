@@ -11,6 +11,7 @@ using System.Threading;
 using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using System.Data;
+using System.Text.RegularExpressions;
 
 namespace backoffice
 {
@@ -53,30 +54,13 @@ namespace backoffice
         }
 
 
-        public async Task<bool> ProcessDataFile(string filename)
+        public async Task<bool> Process_TechData_DataFile(SupplierType stype, string filename)
         {
-
-            string prod_eta = "";
-            string prod_status = "";
-            int counter = 0;
-            double available = 0;
-
-            TechDataSupplier FileSupplier = new TechDataSupplier(filename);
-            FileSupplier.Filename = filename;
-
-            int count = await FileSupplier.LoadProducts();
-
-            if (shopify == null)
-            {
-                shopify = new Shopify();
-                await Download_Shopify();
-            }
-
-            //TODO: THIS IS UNFINISHED!!!!!
+            await UpdatePricing(stype, filename);
+            await UpdateETA(stype, filename);
 
             return true;
         }
-
 
         private bool IsProductMatch(Shopify_Product s_product, Product product)
         {
@@ -105,7 +89,7 @@ namespace backoffice
         /// <param name="eta"></param>
         /// <param name="available"></param>
         /// <param name="status"></param>
-        public void UpdateItemETA(string itemnumber, string eta, string available, string status)
+        public async void UpdateItemETA(string itemnumber, string eta, string available, string status, string tags = "")
         {
 
             if (shopify == null)
@@ -113,11 +97,22 @@ namespace backoffice
                 shopify = new Shopify();
             }
 
-            string result = shopify.update_availability(itemnumber, available, eta, true, "", status).GetAwaiter().GetResult();
+            string result = await shopify.update_availability(itemnumber, available, eta, true, "", status, tags);
 
             LogStr(result);
         }
 
+        public async void UpdateItemETA(Shopify_Product shop_prod, Product supplier_product)
+        {
+            if (shopify == null)
+            {
+                shopify = new Shopify();
+            }
+
+            string result = await shopify.Update_Availability(shop_prod, supplier_product);
+
+            LogStr("ETA Updated for " + shop_prod.Handle + " - " + result);
+        }
 
         /// <summary>
         /// Updates list of item ETA by SKU.  Developed for TechData
@@ -176,7 +171,7 @@ namespace backoffice
             return "finished processing";
         }
 
-
+        
         /// <summary>
         /// Identifies all shopify items with no images.  Provides list for manipulation
         /// </summary>
@@ -231,7 +226,7 @@ namespace backoffice
                 ((MMTSupplier)mmt).DownloadType = backoffice.MMTDownloadType.Clearance;
 
                 var mmt_download = mmt.LoadProducts();
-                var shopify_download = Download_Shopify(new string[] { "collection_id=182307225737" });
+                var shopify_download = Download_Shopify(new string[] { "collection_id=" + mmt.CollectionID });
 
                 await Task.WhenAll(mmt_download, shopify_download);
                 LogStr("Updating Clearance...", true);
@@ -263,15 +258,15 @@ namespace backoffice
                     {
                         //updateETA and stuff
                         if (mmt_prod_match.Status == null)
-                            UpdateItemETA(sprod.Id.ToString(), mmt_prod_match.ETA.ToString(), mmt_prod_match.Available.ToString(), "Clearance");
+                            UpdateItemETA(sprod.Id.ToString(), mmt_prod_match.ETA.ToString(), mmt_prod_match.Available.ToString(), "Clearance", sprod.Tags);
                         else
-                            UpdateItemETA(sprod.Id.ToString(), mmt_prod_match.ETA.ToString(), mmt_prod_match.Available.ToString(), mmt_prod_match.Status);
+                            UpdateItemETA(sprod.Id.ToString(), mmt_prod_match.ETA.ToString(), mmt_prod_match.Available.ToString(), mmt_prod_match.Status, sprod.Tags);
                         LogStr(String.Format(@"""{0}"", Item in list updated eta", sprod.Id.ToString()));
                     }
                     else
                     {
                         sprod.Tags = RemoveClearanceTag(sprod.Tags);
-                        await shopify.updatetags(sprod.Id, sprod.Tags);
+                        await shopify.UpdateTags(sprod.Id, sprod.Tags);
                         LogStr(String.Format(@"""{0}"", Item removed from list", sprod.Id.ToString()));
 
                     }
@@ -326,7 +321,7 @@ namespace backoffice
                     if (match)
                     {
                         sprod_match.Tags = AddClearanceTag(sprod_match.Tags);
-                        await shopify.updatetags(sprod_match.Id, sprod_match.Tags);
+                        await shopify.UpdateTags(sprod_match.Id, sprod_match.Tags);
                         LogStr(String.Format(@"""{0}"", Item added to clearance collection", sprod_match.Id.ToString()));
                     }
                     else
@@ -515,7 +510,6 @@ namespace backoffice
                 LogStr(ex.Message, true);
             }
            
-            bool match = false;
             string new_price = "";
 
             Shopify_Product matcheditem;
@@ -550,7 +544,7 @@ namespace backoffice
                     inv_ids.Clear();
                     inv_uri = "";
 
-                    LogStr("Retreived " + invList.Count() + " total inventory items", true);
+                    //LogStr("Retreived " + invList.Count() + " total inventory items", true);
                 }
             }
 
@@ -573,14 +567,13 @@ namespace backoffice
                 inv_ids.Clear();
                 inv_uri = "";
 
-                LogStr("Retreived " + invList.Count() + " total inventory items", true);
+                //LogStr("Retreived " + invList.Count() + " total inventory items", true);
             }
 
 
             LogStr("Matching items", true);
             bool update_price = false;
             bool update_cost = false;
-            bool force_cost_eval = false;
             bool force_eta_update = false;
             bool change_supplier = false;
             bool supplier_match = false;
@@ -591,11 +584,17 @@ namespace backoffice
             {
                 try
                 {
+
+                    update_price = false;
+                    update_cost = false;
+                    force_eta_update = false;
+                    change_supplier = false;
+                    supplier_match = false;
+
                     matcheditem = shopify.MatchProductByMMT(supplier_prod.SKU, supplier_prod.SKU);
 
                     if (matcheditem != null)
                     {
-
                         //InventoryItemElement inv = await shopify.Get_InventoryItem(matcheditem.variants.FirstOrDefault().inventory_item_id.ToString());
                         InventoryItem inv = null;
 
@@ -606,31 +605,7 @@ namespace backoffice
 
                         if (inv != null)
                         {
-                            /*  You have MMT Product
-                                *  You have Shopify product and cost price
-                                *  
-                                *  So now test if RRPBuy and Cost Price are the same
-                                *  
-                                *  If they are, then nothing needs to be done
-                                *  If they aren't then we need to adjust pricing
-                            */
-
-
-
-                            /*  New Section for products with multiple distributors
-                             *  
-                             *  Check if Tags show product is matched to supplier
-                             *  if it is then proceed as usual - no code included here
-                             *  
-                             *  if it's not then we need to evaulate if it should be switched.
-                             *  
-                             *  throw it to new method to check processing for that and decide if we should switch
-                             *  supplier and contine price processing
-                             * 
-                             * 
-                             */
-
-                            supplier_match = Match_Supplier_Product_Tag(matcheditem.Tags, supplier.Supplier_Tag);
+                            supplier_match = Match_Product_Tag(matcheditem.Tags, supplier.Supplier_Tag);
                             if (!supplier_match)
                             {
                                 change_supplier = await Evaluate_Product_Supplier_Change(matcheditem, inv, supplier_prod);
@@ -638,7 +613,8 @@ namespace backoffice
                                 {
                                     LogStr(supplier_prod.SKU + " - Changing to new supplier");
                                     force_eta_update = true;
-                                    //bool change_result = await shopify.Change_InventoryLocation(inv.Id, supplier.Supplier_Location_Id);
+                                    bool change_result = await shopify.Change_InventoryLocation(inv.Id, supplier.Supplier_Location_Id);
+                                    UpdateShippingTag(matcheditem, supplier.Supplier_Tag);
                                 }
                             }
 
@@ -657,6 +633,11 @@ namespace backoffice
                                     }
                                 }
 
+                               if (matcheditem.Variants.FirstOrDefault().Taxable)
+                                    comp_cost_price = common.RemoveGST(supplier_prod.CostPrice);
+                                else
+                                    comp_cost_price = supplier_prod.CostPrice;
+
                                 if (inv.Cost != comp_cost_price.ToShopify())
                                 {
                                     update_cost = true;
@@ -670,30 +651,23 @@ namespace backoffice
                                 }
                             }
 
-
                             //once you get into this section price is evaulated and updated.  There is no return from here
                             if (update_price || update_cost || change_supplier)
                             {
-
-                                if (matcheditem.Variants.FirstOrDefault().Taxable)
-                                    comp_cost_price = supplier_prod.CostPrice;
-                                else
-                                    comp_cost_price = shopify.addgst(supplier_prod.CostPrice);
 
                                 //LogStr(String.Format(@"""{0}"",""{1}"",""{2}"", Match Found, Price Not Equal", product.handle, product.title, supplier_prod.Manufacturer[0].ManufacturerCode));
 
                                 //generate new price
                                 try
                                 {
-                                    if (matcheditem.Variants[0].Taxable)
-                                        new_price = shopify.createnewprice(inv.Cost, matcheditem.Variants.FirstOrDefault().CompareAtPrice.ToString(), matcheditem.Variants.FirstOrDefault().Price, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify(), false, true, true);
+                                    if (matcheditem.Variants.FirstOrDefault().CompareAtPrice == null)
+                                        new_price = shopify.createnewprice(inv.Cost, "0", matcheditem.Variants.FirstOrDefault().Price, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify(), false, false, matcheditem.Variants[0].Taxable);
                                     else
-                                        new_price = shopify.createnewprice(inv.Cost, matcheditem.Variants.FirstOrDefault().CompareAtPrice.ToString(), matcheditem.Variants.FirstOrDefault().Price, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify(), false, true, false);
-                                    
+                                        new_price = shopify.createnewprice(inv.Cost, matcheditem.Variants.FirstOrDefault().CompareAtPrice.ToString(), matcheditem.Variants.FirstOrDefault().Price, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify(), false, false, matcheditem.Variants[0].Taxable);                                   
                                 }
                                 catch (Exception ex)
                                 {
-                                    string[] formatlistex = { matcheditem.Handle, matcheditem.Title, comp_cost_price.ToString(), supplier_prod.RRPPrice.ToShopify(), ex.Message };
+                                    string[] formatlistex = { matcheditem.Handle, matcheditem.Title, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify(), ex.Message };
                                     LogStr(String.Format(@"""{0}"",""{1}"",""{2}"",""{3}"", ""Match Found. Price Not Equal. Error creating New Price"", ""{4}""", formatlistex));
                                     new_price = "0";
                                 }
@@ -703,37 +677,36 @@ namespace backoffice
                                 {
 
                                     //Create formatlist for logging purposes
-                                    string[] formatlist = { matcheditem.Handle, matcheditem.Title, new_price, comp_cost_price.ToShopify(), supplier_prod.RRPPrice.ToShopify() };
+                                    string[] formatlist = { matcheditem.Handle, matcheditem.Title, new_price, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify() };
                                     //LogStr(String.Format(@"""{0}"",""{1}"",""{2}"",""{3}"",""{4}"", Match Found Price Not Equal Creating New Price", formatlist), true);
 
                                     //now you have a new price update all pricing in shopify
                                     try
                                     {
-                                        /*
                                         if (matcheditem.Variants[0].Taxable)
-                                            await shopify.updateprice(inv.Id, matcheditem.Variants.FirstOrDefault().Id, supplier_prod.CostPrice.ToShopify(), new_price, supplier_prod.RRPPrice.ToShopify());
+                                            await shopify.updateprice(inv.Id, matcheditem.Variants.FirstOrDefault().Id, common.RemoveGST(supplier_prod.CostPrice).ToShopify(), common.RemoveGST(new_price).ToShopify(), common.RemoveGST(supplier_prod.RRPPrice).ToShopify());
                                         else
-                                            await shopify.updateprice(inv.Id, matcheditem.Variants.FirstOrDefault().Id, shopify.addgst(supplier_prod.CostPrice.ToShopify()), new_price, supplier_prod.RRPPrice.ToShopify());
-                                            */
+                                            await shopify.updateprice(inv.Id, matcheditem.Variants.FirstOrDefault().Id, supplier_prod.CostPrice.ToShopify(), new_price, supplier_prod.RRPPrice.ToShopify());
+
                                         LogStr(String.Format(@"""{0}"",""{1}"",""{2}"",""{3}"",""{4}"", Match Found. Price Not Equal. Created New Price", formatlist));
 
                                     }
                                     catch (Exception ex)
                                     {
-                                        string[] formatlistex = { matcheditem.Handle, matcheditem.Title, comp_cost_price.ToString(), supplier_prod.RRPPrice.ToShopify(), ex.Message };
+                                        string[] formatlistex = { matcheditem.Handle, matcheditem.Title, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify(), ex.Message };
                                         LogStr(String.Format(@"""{0}"",""{1}"",""{2}"",""{3}"", ""Match Found. Price Not Equal. Error creating uploading new pricing"", ""{4}""", formatlistex));
                                     }
 
                                 }
                                 else
                                 {
-                                    string[] formatlistex = { matcheditem.Handle, matcheditem.Title, comp_cost_price.ToString(), supplier_prod.RRPPrice.ToShopify() };
+                                    string[] formatlistex = { matcheditem.Handle, matcheditem.Title, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify() };
                                     LogStr(String.Format(@"""{0}"",""{1}"",""{2}"",""{3}"", ""Match Found. Price Not Equal. New price is 0", formatlistex));
                                 }
 
                                 if (force_eta_update)
                                 {
-                                    //UpdateItemETA(matcheditem.Id.ToString(), supplier_prod.ETA.ToString(), supplier_prod.Available.ToString(), supplier_prod.Status);
+                                    UpdateItemETA(matcheditem, supplier_prod);
                                     LogStr("Force ETA update for item - " + matcheditem.Id.ToString());
                                 }
                             }
@@ -773,57 +746,62 @@ namespace backoffice
             
             bool retval = false;
 
-            if (sprod.Available > 0)
+            if (Match_Product_Tag(matcheditem.Tags, "Supplier_Change_Override"))
+                retval = false;
+            else
             {
-                if (Convert.ToDouble(inv.Cost) > sprod.CostPrice)
+
+
+                if (sprod.Available > 0)
                 {
-                    //does new supplier have it and is cheaper?  then change
-                    
-                    retval = true;
+                    if (Convert.ToDouble(inv.Cost) > sprod.CostPrice)
+                    {
+                        //does new supplier have it and is cheaper?  then change
+
+                        retval = true;
+                    }
+                    else
+                    {
+                        //does new supplier have stock and old supplier doesn't?  then change
+
+                        //get current metafields for availability
+                        Prod_Availability avail = await shopify.GetAvailability(matcheditem.Id);
+
+                        if (avail.Available == 0)
+                            retval = true;
+
+                    }
                 }
                 else
                 {
-                    //does new supplier have stock and old supplier doesn't?  then change
 
-                    //get current metafields for availability
                     Prod_Availability avail = await shopify.GetAvailability(matcheditem.Id);
 
                     if (avail.Available == 0)
-                        retval = true;
-
-                }
-            }
-            else 
-            {
-
-                Prod_Availability avail = await shopify.GetAvailability(matcheditem.Id);
-
-                if (avail.Available == 0)
-                {
-                    if (avail.ETA < sprod.ETA)
                     {
-                        if (Convert.ToDouble(inv.Cost) > sprod.CostPrice)
+                        if (avail.ETA < sprod.ETA)
                         {
-                            retval = true;
+                            if (Convert.ToDouble(inv.Cost) > sprod.CostPrice)
+                            {
+                                retval = true;
+                            }
                         }
                     }
                 }
             }
-
             return retval;
         }
 
-        private bool Match_Supplier_Product_Tag(string tags, string supplier_Tag)
+        private bool Match_Product_Tag(string tags, string match_Tag)
         {
             bool retval = false;
             tags = tags.ToLower();
 
-            if (tags.Contains(supplier_Tag.ToLower()))
+            if (tags.Contains(match_Tag.ToLower()))
                 retval = true;
 
             return retval;
         }
-
         
         public async Task<bool> UpdateETA(SupplierType sType = SupplierType.MMT, string filename = "")
         {
@@ -858,7 +836,7 @@ namespace backoffice
 
                     if (shop_prod != null)
                     {
-                        result = await shopify.update_availability(shop_prod, prod);
+                        result = await shopify.Update_Availability(shop_prod, prod);
                         //LogStr(DateTime.Now + "," + prod.SKU + "," + result);
 
                         LogStr(DateTime.Now + "," + prod.SKU + "," + prod.Available + " - " + prod.ETA.ToString() + " - " + prod.Status + ": " + result);
@@ -1010,6 +988,40 @@ namespace backoffice
 
         }
         */
+
+        public async void UpdateShippingTag(Shopify_Product matcheditem, string supplier_Tag)
+        {
+            string newtags;
+
+            string[] tags = matcheditem.Tags.Split(',');
+
+            int ship_index = Array.FindIndex(tags, FindShippingTag);
+
+            if (ship_index > -1)
+            {
+                tags[ship_index] = supplier_Tag;
+            }
+            else
+            {
+                tags[0] = supplier_Tag;
+            }
+
+            newtags = String.Join(",", tags);
+            await shopify.UpdateTags(matcheditem.Id, String.Join(",", tags));
+        }
+
+        private static bool FindShippingTag(string s)
+        {
+            if (s.ToLower().Contains("shipping"))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
 
         private void LogStr(string v1)
         {
