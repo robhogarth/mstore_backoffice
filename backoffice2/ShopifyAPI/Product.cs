@@ -9,8 +9,13 @@ namespace backoffice.ShopifyAPI
 {
     public partial class Shopify_Products
     {
-        [JsonProperty("product")]
+        [JsonProperty("products")]
         public List<Shopify_Product> Products { get; set; }
+
+        public Shopify_Products()
+        {
+            Products = new List<Shopify_Product>();
+        }
     }
 
     public class Shopify_Product_Wrapper

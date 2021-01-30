@@ -30,7 +30,6 @@ namespace backoffice
     }
 
 
-
     abstract public class Product: IProduct
     {
 
@@ -47,8 +46,6 @@ namespace backoffice
         {
             return this.SKU + ", " + this.Title + ", " + this.Vendor + ", $" + this.CostPrice + ", $" + this.RRPPrice + ", " + this.Available.ToString() + ", " + this.ETA.ToString() + ", " + this.Status;
         }
-
-
     }
 
     public class MMTProduct: Product
@@ -202,14 +199,15 @@ namespace backoffice
         {
             get
             {
-                return Convert.ToInt16(this.rFields[10]);
+                string avail_string = this.rFields[10]; 
+                return Convert.ToInt32(Math.Round(Convert.ToDouble(avail_string),0));
             }
         }
         public override DateTime ETA
         {
             get
             {
-                return DateTime.Now.AddDays(14);
+                return DateTime.MinValue;
             }
         }
         public override string Status
@@ -303,7 +301,7 @@ namespace backoffice
         {
             get
             {
-                return Convert.ToInt16(this.rFields[9]);
+                return Convert.ToInt32(this.rFields[9]);
             }
         }
         public override DateTime ETA
@@ -313,11 +311,11 @@ namespace backoffice
                 DateTime dFormat;
                 if (DateTime.TryParse(rFields[10], out dFormat))
                 {
-                    return dFormat;
+                    return dFormat.Date;
                 }
                 else
                 {
-                    return DateTime.Now;
+                    return DateTime.MinValue;
                 }
             }
         }
@@ -332,8 +330,14 @@ namespace backoffice
                 }
                 else
                 {
+                    if (this.Available == 0)
+                    {
+                        return "Out of Stock";
+                    }
+
                     return "Order to Order";
                 }
+
             }
         }
 

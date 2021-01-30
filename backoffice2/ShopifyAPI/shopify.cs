@@ -16,6 +16,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Microsoft.Win32.SafeHandles;
 using System.Security.Cryptography;
+using System.CodeDom.Compiler;
 
 namespace backoffice.ShopifyAPI
 {
@@ -490,7 +491,6 @@ namespace backoffice.ShopifyAPI
             return true;
         }
 
-
         public Shopify_Product MatchProductByMMT(string handle, string sku)
         {
             if ((sku == null) || (sku == ""))
@@ -524,6 +524,31 @@ namespace backoffice.ShopifyAPI
                         break;
                     }
                 }
+            }
+
+            return retval;
+        }
+
+        public Shopify_Product MatchProductBySupplier(Product supplier_prod)
+        {
+            Shopify_Product retval = null;
+
+            string sku = supplier_prod.SKU.ToLower();
+
+            foreach (Shopify_Product prod in products)
+            {
+                if ((prod.Handle.ToLower() == sku))
+                {
+                    retval = prod;
+                    break;
+                }
+
+                if ((prod.Variants.FirstOrDefault().Sku.ToLower() == sku))
+                {
+                    retval = prod;
+                    break;
+                }
+
             }
 
             return retval;
@@ -577,6 +602,8 @@ namespace backoffice.ShopifyAPI
         {
             bool retval = false;
             bool repeat = true;
+            bool retry = true;
+
             string geturi;
 
             if (images)
@@ -616,10 +643,32 @@ namespace backoffice.ShopifyAPI
             while (repeat)
             {
                 retval = true;
+                retry = true;
 
-                HttpResponseMessage response = await client.GetAsync(geturi);
+                HttpResponseMessage response = new HttpResponseMessage();
+                Shopify_Products result = new Shopify_Products();
+                string response_string = "";
 
-                Shopify_Products result = JsonConvert.DeserializeObject<Shopify_Products>(await response.Content.ReadAsStringAsync());
+                while (retry)
+                {
+                    response = await client.GetAsync(geturi);
+                    
+                    if (response.StatusCode == HttpStatusCode.OK)
+                    {
+                        retry = false;
+                    }
+                    else
+                    {
+                        _ = await check_ratelimit(response.Headers);
+                    }
+                    
+
+                 }
+
+                response_string = await response.Content.ReadAsStringAsync();
+
+                result = JsonConvert.DeserializeObject<Shopify_Products>(response_string);
+                
 
                 foreach (Shopify_Product prod in result.Products)
                 {
@@ -820,10 +869,26 @@ namespace backoffice.ShopifyAPI
 
         }
 
+
+        public async Task<string> update_availability(Shopify_Product shop_prod, Product supplier_product)
+        {
+            //update mbot tags
+            _ = API.UpdateMbot(shop_prod.Id, shop_prod.Tags);
+
+            string retval = await API.UpdateProductETAMetafields(shop_prod.Id.ToString(), supplier_product.Available.ToString(), supplier_product.ETA.ToString(), supplier_product.Status);
+
+            return retval;
+        }
+
+
+
+        
         public async Task<string> update_availability(string handle, string availability, string eta, bool skipprodcheck = false, string sku = "", string MMTStatus = "", string tags = "")
         {
 
             string retval = handle + ", ";
+            bool doETAUpdate = false;
+
 
             Shopify_Product a_prod = null;
 
@@ -832,7 +897,7 @@ namespace backoffice.ShopifyAPI
                 a_prod = MatchProductByMMT(handle, sku);
             }
 
-            if ((a_prod != null) | (skipprodcheck))
+            if ((a_prod != null) | (skipprodcheck) | doETAUpdate)
             {
                 List<Metafield> mwrapper = new List<Metafield>();
 
@@ -849,7 +914,7 @@ namespace backoffice.ShopifyAPI
                     uri = @"https://monpearte-it-solutions.myshopify.com/admin/api/2020-01/products/" + a_prod.Id + "/metafields.json";
 
                     //update mbot tags
-                    await UpdateMbot(a_prod.Id, a_prod.Tags);
+                    //await UpdateMbot(a_prod.Id, a_prod.Tags);
                 }
 
 
@@ -869,7 +934,8 @@ namespace backoffice.ShopifyAPI
 
                     try
                     {
-                        retval += await post_product_data(uri, hcontent);
+                        //retval += await post_product_data(uri, hcontent);
+                        retval += "Debug Only";
                     }
                     catch (Exception ex)
                     {
@@ -1423,7 +1489,7 @@ namespace backoffice.ShopifyAPI
             return retval;
         }
 
-        public Shopify(int ratelimit_interval = 1000)
+        public Shopify(int ratelimit_interval = 1)
         {
             API = new Shop_API(ratelimit_interval);
 
@@ -1450,12 +1516,20 @@ namespace backoffice.ShopifyAPI
 
             temp_locations = await API.GetLocations();
 
-            foreach (Location loc in temp_locations.LocationsLocations)
+            if (temp_locations.LocationsLocations == null)
+            { 
+                _Location_Status = Location_Status_Enum.UnLoaded;
+             }
+            else
             {
-                this.Locations.Add(loc);
-            }
 
-            _Location_Status = Location_Status_Enum.Loaded;
+                foreach (Location loc in temp_locations.LocationsLocations)
+                {
+                    this.Locations.Add(loc);
+                }
+
+                _Location_Status = Location_Status_Enum.Loaded;
+            }
         }
 
         public async Task<Shopify_Product> GetProduct(string Handle)

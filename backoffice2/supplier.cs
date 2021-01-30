@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.VisualBasic.FileIO;
 
@@ -36,8 +37,9 @@ namespace backoffice
         
         public bool IncGSTRRP = false;
         public bool IncGSTCost = false;
-        public long Supplier_Location_Id = 0;
-        public string Supplier_Tag = "";
+        public abstract long Supplier_Location_Id { get; }
+        public abstract string Supplier_Tag { get; }
+        public abstract string CollectionID { get; }
     }
 
     public abstract class FileSupplier: Supplier
@@ -78,11 +80,14 @@ namespace backoffice
         public string[] mmtdatafeed = { "https://www.mmt.com.au/datafeed/index.php?lt=s&ft=xml&tk=94M0C1O223NF7AI59BS94903AC004E0B4A%20D09%2083A%2046B%20D80%20648%2031F%2075D%20665F9461C558F25AE&af[]=et&af[]=st", "https://www.mmt.com.au/datafeed/index.php?lt=c&ft=xml&tk=94M0C1O223NF7AI59BS94903AC004E0B4A%20D09%2083A%2046B%20D80%20648%2031F%2075D%20665F9461C558F25AE&af[]=et&af[]=st" };
         public MMTDownloadType DownloadType = MMTDownloadType.Standard;
         public new bool IncGSTRRP = true;
-        public new long Supplier_Location_Id = 41088974985;
-        public new string Supplier_Tag = "MMTShipping";
+        public override long Supplier_Location_Id { get { return 41088974985; } }
+        public override string Supplier_Tag { get {return "MMTShipping"; } }
+        public override string CollectionID { get { return "235730206870"; } }
 
         public override async Task<int> LoadProducts()
         {
+            await Task.Run(() => { Thread.Sleep(100); });
+
             if (this.Products == null)
                 this.Products = new List<Product>();
             else
@@ -117,17 +122,24 @@ namespace backoffice
     public class TechDataSupplier: FileSupplier
     {
 
-        public new long Supplier_Location_Id = 45740195977;
-        public new string Supplier_Tag = "TechDataShipping";
+        public override long Supplier_Location_Id { get { return 45740195977; } }
+        public override string Supplier_Tag { get { return "TechDataShipping"; } }
+        public override string CollectionID { get { return "235731419286"; } }
 
         public TechDataSupplier(string _filename)
         {
             Filename = _filename;
+
         }
 
-        public async override Task<int> LoadProducts()
+        public override async Task<int> LoadProducts()
         {
-            await Task.Delay(100);
+            await Task.Yield();
+
+            if (this.Products == null)
+                this.Products = new List<Product>();
+            else
+                this.Products.Clear();
 
             using (TextFieldParser parser = new TextFieldParser(Filename))
             {
@@ -147,6 +159,7 @@ namespace backoffice
                     if (counter > 0)
                     {
                         prod = new TechDataProduct(fields);
+                        this.Products.Add(prod);
                     }
 
                     counter++;
@@ -159,8 +172,9 @@ namespace backoffice
 
     public class DickerDataSupplier : FileSupplier
     {
-        public new long Supplier_Location_Id = 50476220566;
-        public new string Supplier_Tag = "DickerDataShipping";
+        public override long Supplier_Location_Id { get { return 50476220566; } }
+        public override string Supplier_Tag { get { return "DickerDataShipping"; } }
+        public override string CollectionID { get { return "235732009110"; } }
 
         public DickerDataSupplier(string _filename)
         {
@@ -169,7 +183,13 @@ namespace backoffice
 
         public async override Task<int> LoadProducts()
         {
-            await Task.Delay(100);
+            await Task.Yield();
+
+            if (this.Products == null)
+                this.Products = new List<Product>();
+            else
+                this.Products.Clear();
+
 
             using (TextFieldParser parser = new TextFieldParser(Filename))
             {
@@ -192,6 +212,7 @@ namespace backoffice
                     if (counter > 0)
                     {
                         prod = new DickerDataProduct(fields);
+                        this.Products.Add(prod);
                     }
 
                     counter++;
