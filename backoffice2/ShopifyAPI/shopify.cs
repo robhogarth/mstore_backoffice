@@ -1180,9 +1180,7 @@ namespace backoffice.ShopifyAPI
         { 
             string uri = @"https://monpearte-it-solutions.myshopify.com/admin/api/2020-01/inventory_items.json?limit=100&ids=" + ids;
 
-            HttpResponseMessage response = await client.GetAsync(uri);
-            string resp_content = await response.Content.ReadAsStringAsync();
-
+            string resp_content = await API.Get_Data(uri);
             InventoryItems retvals = JsonConvert.DeserializeObject<InventoryItems>(resp_content);
             
             return retvals;
@@ -1222,7 +1220,7 @@ namespace backoffice.ShopifyAPI
             // do stuff with GST amounts.  currently this is easy.  With more data sources logic will need to change                       
             if ((!new_cost_taxable) & (!shopify_taxable))
             {             
-                new_cost = addgst(new_cost);
+                new_cost = common.AddGST(new_cost).ToString();
             }
 
             // no need to do anything with shopify_taxable right now but cant hurt to include it for things later on down the track

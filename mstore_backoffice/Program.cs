@@ -197,6 +197,12 @@ namespace mstore_backoffice
                     case "updateclearance":
                         mbot.UpdateClearance().Wait();
                         break;
+                    case "process_techdatafile":
+                        mbot.Process_DataFile(SupplierType.TechData, statusfile).Wait();
+                        break;
+                    case "process_dickerdatafile":
+                        mbot.Process_DataFile(SupplierType.DickerData, statusfile).Wait();
+                        break;
                     /*
                     case "addsku":
                         mbot.AddSKU().Wait();

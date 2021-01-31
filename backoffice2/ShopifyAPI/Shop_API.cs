@@ -99,7 +99,7 @@ namespace backoffice.ShopifyAPI
             string gl_uri = url_prefix + "/locations.json";
             Locations retval;
 
-            string response = await API_Get_Data(gl_uri);
+            string response = await Get_Data(gl_uri);
             retval = JsonConvert.DeserializeObject<Locations>(response);
 
             return retval;
@@ -111,7 +111,7 @@ namespace backoffice.ShopifyAPI
 
             InventoryLevels retval;
 
-            string content = await API_Get_Data(gl_uri);
+            string content = await Get_Data(gl_uri);
 
             retval = JsonConvert.DeserializeObject<InventoryLevels>(content);
 
@@ -124,7 +124,7 @@ namespace backoffice.ShopifyAPI
 
             InventoryItems retval;
 
-            string content = await API_Get_Data(gl_uri);
+            string content = await Get_Data(gl_uri);
 
             retval = JsonConvert.DeserializeObject<InventoryItems>(content);
 
@@ -186,14 +186,14 @@ namespace backoffice.ShopifyAPI
             else
                 uri = url_prefix + "/products/" + productID + "/metafields.json";
 
-            string content = await API_Get_Data(uri);
+            string content = await Get_Data(uri);
                         
             GetMetafields retval = JsonConvert.DeserializeObject<GetMetafields>(content);
 
             return retval;
         }
 
-        private async Task<string> API_Get_Data(string uri)
+        public async Task<string> Get_Data(string uri)
         {
             bool retry = true;
             string content = "";

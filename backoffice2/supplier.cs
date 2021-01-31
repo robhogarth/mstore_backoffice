@@ -41,7 +41,8 @@ namespace backoffice
 
     public abstract class FileSupplier: Supplier
     {
-        public string Filename;
+        public abstract string Filename { get; }
+        public abstract string Temppath { get; }
                 
     }
 
@@ -66,7 +67,24 @@ namespace backoffice
             }
 
             return retval;
-        }       
+        }
+
+        public static FileSupplier CreateFileSupplier(SupplierType sType, string filename = "")
+        {
+            FileSupplier retval;
+
+            switch (sType)
+            {
+                case SupplierType.TechData:
+                    retval = new TechDataSupplier(filename);
+                    break;
+                default:
+                    retval = new DickerDataSupplier(filename);
+                    break;
+            }
+
+            return retval;
+        }
     }
 
 
@@ -117,15 +135,17 @@ namespace backoffice
 
     public class TechDataSupplier: FileSupplier
     {
+        private string _filename;
 
         public override long Supplier_Location_Id { get { return 45740195977; } }
         public override string Supplier_Tag { get { return "TechDataShipping"; } }
         public override string CollectionID { get { return "235731419286"; } }
+        public override string Temppath { get { return @"d:\temp\mbot\techdata"; } }
+        public override string Filename { get { return _filename; } }
 
-        public TechDataSupplier(string _filename)
+        public TechDataSupplier(string _file)
         {
-            Filename = _filename;
-
+            _filename = _file;
         }
 
         public override async Task<int> LoadProducts()
@@ -168,13 +188,16 @@ namespace backoffice
 
     public class DickerDataSupplier : FileSupplier
     {
+        private string _filename;
         public override long Supplier_Location_Id { get { return 50476220566; } }
         public override string Supplier_Tag { get { return "DickerDataShipping"; } }
         public override string CollectionID { get { return "235732009110"; } }
+        public override string Temppath { get { return @"d:\temp\mbot\dickerdata"; } }
+        public override string Filename { get { return _filename; } }
 
-        public DickerDataSupplier(string _filename)
+        public DickerDataSupplier(string _file)
         {
-            Filename = _filename;
+            _filename = _file;
         }
 
         public async override Task<int> LoadProducts()

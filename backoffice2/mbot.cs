@@ -12,6 +12,7 @@ using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using System.Data;
 using System.Text.RegularExpressions;
+using System.IO.Compression;
 
 namespace backoffice
 {
@@ -26,6 +27,9 @@ namespace backoffice
     {
 
         const string ClearanceTag = "Clearance";
+        const string TechDataFile = "PRICING_FEED_0009043769.zip";
+        const string DickerDataFile = "datafeed.zip";
+
 
         private List<string> mstore_stock;
         static string mstore_stock_file;
@@ -43,23 +47,57 @@ namespace backoffice
 
         public async Task<int> Test()
         {
-            string _file = @"d:\temp\datafeed.csv";
+            //string _file = @"d:\temp\datafeed.csv";
             //string _file = @"d:\temp\0009043769.csv";
+            string _file = @"c:\temp\PRICING_FEED_0009043769.zip";
 
+            //await Process_TechData_DataFile(SupplierType.TechData, _file);
 
             //await UpdateETA(SupplierType.TechData, _file);
-            await UpdatePricing(SupplierType.DickerData, _file);
+            //await UpdatePricing(SupplierType.DickerData, _file);
 
             return 0;
         }
 
 
-        public async Task<bool> Process_TechData_DataFile(SupplierType stype, string filename)
+        public async Task<bool> Process_DataFile(SupplierType stype, string filename)
         {
-            await UpdatePricing(stype, filename);
-            await UpdateETA(stype, filename);
+            try
+            {
+                string _file = ExtractDataFile(stype, filename);
 
-            return true;
+                await UpdatePricing(stype, _file);
+                await UpdateETA(stype, _file);
+
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogStr("ProcessDatafileException - " + ex.Message);
+                return false;
+            }
+        }
+
+        private string ExtractDataFile(SupplierType sType, string _file)
+        {
+            FileSupplier sup = SupplierProducer.CreateFileSupplier(sType);
+
+            string _path = sup.Temppath;
+
+            if (Directory.Exists(_path))
+            {
+                foreach (string file in Directory.EnumerateFiles(_path))
+                {
+                    File.Delete(file);
+                }
+
+            }             
+
+            ZipFile.ExtractToDirectory(_file, _path);
+            string[] files = System.IO.Directory.GetFiles(_path);
+
+            return files[0];
         }
 
         private bool IsProductMatch(Shopify_Product s_product, Product product)
