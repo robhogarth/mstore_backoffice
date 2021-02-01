@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json.Serialization;
+using System;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
@@ -26,6 +27,28 @@ namespace backoffice
         {
             return price.ToString("F");
         }
+    }
+
+    public static class ETAExtensions
+    {
+        public const string AvailableTagPrefix = "mbot_Avail__";
+        public const string ETATagPrefix = "mbot_ETA__";
+        public const string StatusTagPrefix = "mbot_Status__";
+
+        public static string ToAvailableTag(this int available)
+        {
+            return AvailableTagPrefix + available.ToString();
+        }
+
+        public static string ToETATag(this DateTime ETA)
+        {
+            return ETATagPrefix + ETA.ToString().Replace(" ", "_");
+        }
+        public static string ToStatusTag(this string status)
+        {
+            return StatusTagPrefix + status;
+        }
+
 
     }
 

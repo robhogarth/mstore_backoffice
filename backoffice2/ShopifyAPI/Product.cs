@@ -51,7 +51,7 @@ namespace backoffice.ShopifyAPI
         public DateTimeOffset UpdatedAt { get; set; }
 
         [JsonProperty("published_at")]
-        public DateTimeOffset PublishedAt { get; set; }
+        public string PublishedAt { get; set; }
 
         [JsonProperty("template_suffix")]
         public object TemplateSuffix { get; set; }
@@ -76,5 +76,9 @@ namespace backoffice.ShopifyAPI
 
         [JsonProperty("image")]
         public Image Image { get; set; }
+
+        [JsonProperty("status")]
+        public string Status { get; set; }
+
     }
 }

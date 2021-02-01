@@ -47,14 +47,17 @@ namespace backoffice
 
         public async Task<int> Test()
         {
-            //string _file = @"d:\temp\datafeed.csv";
+            string _file = @"d:\temp\datafeed.csv";
             //string _file = @"d:\temp\0009043769.csv";
-            string _file = @"c:\temp\PRICING_FEED_0009043769.zip";
+            //string _file = @"c:\temp\PRICING_FEED_0009043769.zip";
 
             //await Process_TechData_DataFile(SupplierType.TechData, _file);
 
-            //await UpdateETA(SupplierType.TechData, _file);
+            await UpdateETA(SupplierType.DickerData, _file);
             //await UpdatePricing(SupplierType.DickerData, _file);
+
+            await FindUnmatched(SupplierType.MMT);
+
 
             return 0;
         }
@@ -439,7 +442,7 @@ namespace backoffice
 
                 var supplier_download = supplier.LoadProducts();
 
-                var shopify_download = Download_Shopify(new string[] { });
+                var shopify_download = Download_Shopify(null, false, true);
 
                 Get_mstore_stock();
 
@@ -488,7 +491,7 @@ namespace backoffice
                         if (!match)
                         {
                             nomatchcount++;
-                            if (product.Variants == null)
+                            if (product.Variants == null | (product.PublishedAt == null))
                             {
                                 LogStr(String.Format(@"""{0}"",""{1}"",""{2}""", product.Handle.ToLower(), product.Title, "null"));
                             }
@@ -503,7 +506,21 @@ namespace backoffice
                                     LogStr(String.Format(@"""{0}"",""{1}"",""{2}"" - Error unpublishing", product.Handle.ToLower(), product.Title, product.Variants[0].Sku));
                                 }
                             }
+                        }
+                        else
+                        {
+                            if (product.PublishedAt == null)
+                            {
 
+                                if (await shopify.republishitem(product.Id))
+                                {
+                                    LogStr(String.Format(@"""{0}"",""{1}"",""{2}"" - Successfully REpublished", product.Handle.ToLower(), product.Title, product.Variants[0].Sku));
+                                }
+                                else
+                                {
+                                    LogStr(String.Format(@"""{0}"",""{1}"",""{2}"" - Error REpublishing", product.Handle.ToLower(), product.Title, product.Variants[0].Sku));
+                                }
+                            }
                         }
                     }
                 }
@@ -966,7 +983,7 @@ namespace backoffice
         */
 
 
-        public async Task<bool> Download_Shopify(string[] querystrings = null, bool images = false)
+        public async Task<bool> Download_Shopify(string[] querystrings = null, bool images = false, bool include_unpublished = false)
         {
             bool retval = false;
 
@@ -974,7 +991,7 @@ namespace backoffice
 
             shopify = new Shopify();
 
-            bool shopify_download = await shopify.getallproducts(querystrings, images);
+            bool shopify_download = await shopify.getallproducts(querystrings, images, false, include_unpublished);
 
             if ((shopify.products.Count > 0) & (shopify_download))
             {

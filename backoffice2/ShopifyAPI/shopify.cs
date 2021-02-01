@@ -353,9 +353,10 @@ namespace backoffice.ShopifyAPI
 
     public class Shopify
     {
-        public string uri_basic = @"https://monpearte-it-solutions.myshopify.com/admin/api/2021-01/products.json?fields=id,handle,title,published_scope,variants,vendor,inventory,tags";
-        public string uri = @"https://monpearte-it-solutions.myshopify.com/admin/api/2021-01/products.json?fields=id,handle,title,published_scope,variants,vendor,inventory,tags&limit=250&published_status=published";
-        public string uri_images = @"https://monpearte-it-solutions.myshopify.com/admin/api/2021-01/products.json?fields=id,handle,title,published_scope,variants,vendor,inventory,tags,images&limit=250&published_status=published";
+        public string uri_basic = @"https://monpearte-it-solutions.myshopify.com/admin/api/2021-01/products.json?fields=id,handle,title,published_scope,variants,vendor,inventory,tags,status";
+        public string uri = @"https://monpearte-it-solutions.myshopify.com/admin/api/2021-01/products.json?fields=id,handle,title,published_scope,variants,vendor,inventory,tags,status&limit=250&published_status=published";
+        public string uri_all = @"https://monpearte-it-solutions.myshopify.com/admin/api/2021-01/products.json?fields=id,handle,title,published_scope,variants,vendor,inventory,tags,status,published_at&limit=250";
+        public string uri_images = @"https://monpearte-it-solutions.myshopify.com/admin/api/2021-01/products.json?fields=id,handle,title,published_scope,variants,vendor,inventory,tags,images,status&limit=250&published_status=published";
         const char splitter = ',';
 
         private Location_Status_Enum _Location_Status;
@@ -587,7 +588,7 @@ namespace backoffice.ShopifyAPI
             return retval;
         }
 
-        public async Task<bool> getallproducts(string[] extraquerystrings = null, bool images = false, bool basic = false)
+        public async Task<bool> getallproducts(string[] extraquerystrings = null, bool images = false, bool basic = false, bool include_unpublished = false)
         {
             bool retval = false;
             bool repeat = true;
@@ -612,6 +613,11 @@ namespace backoffice.ShopifyAPI
             {
                 geturi = uri;
             }
+
+            if (include_unpublished)
+                geturi = uri_all;
+
+
             if (extraquerystrings != null)
             {
                 foreach (string queryString in extraquerystrings)
@@ -858,13 +864,28 @@ namespace backoffice.ShopifyAPI
 
         }
 
-
         public async Task<string> Update_Availability(Shopify_Product shop_prod, Product supplier_product)
         {
-            //update mbot tags
-            _ = API.UpdateTags(shop_prod.Id, common.Updatembot(shop_prod.Tags));
 
-            string retval = await API.UpdateProductETAMetafields(shop_prod.Id.ToString(), supplier_product.Available.ToString(), supplier_product.ETA.ToString(), supplier_product.Status);
+            string retval;
+
+            if (!ETA_Tags_Match(shop_prod, supplier_product))
+            {
+                retval = await API.UpdateProductETAMetafields(shop_prod.Id.ToString(), supplier_product.Available.ToString(), supplier_product.ETA.ToString(), supplier_product.Status);
+
+                shop_prod.Tags = common.Updatembot(shop_prod.Tags);
+                shop_prod.Tags = common.ReplaceTag(shop_prod.Tags, supplier_product.Available.ToAvailableTag(), ETAExtensions.AvailableTagPrefix);
+                shop_prod.Tags = common.ReplaceTag(shop_prod.Tags, supplier_product.ETA.ToETATag(), ETAExtensions.ETATagPrefix);
+                shop_prod.Tags = common.ReplaceTag(shop_prod.Tags, supplier_product.Status.ToStatusTag(), ETAExtensions.StatusTagPrefix);
+
+                retval += (await API.UpdateTags(shop_prod.Id, shop_prod.Tags)).ToString();
+            }
+            else
+            {
+                retval = "No Update Required";
+                _ = API.UpdateTags(shop_prod.Id, common.Updatembot(shop_prod.Tags));
+               
+            }
 
             return retval;
         }
@@ -939,6 +960,28 @@ namespace backoffice.ShopifyAPI
             return retval;
         }
 
+        private bool ETA_Tags_Match(Shopify_Product shop_prod, Product supplier_product)
+        {
+            bool retval = true;
+
+            retval = retval & ContainsTags(shop_prod, supplier_product.Available.ToAvailableTag());
+            retval = retval & ContainsTags(shop_prod, supplier_product.ETA.ToETATag());
+            retval = retval & ContainsTags(shop_prod, supplier_product.Status.ToStatusTag());
+
+            return retval;
+        }
+
+        private bool ContainsTags(Shopify_Product shop_prod, string match_tag)
+        {
+            return ContainsTags(shop_prod.Tags, match_tag);
+        }
+
+        private bool ContainsTags(string shop_prod_tags, string match_tag)
+        {
+            return shop_prod_tags.ToLower().Contains(match_tag.ToLower());              
+        }
+
+
         public async Task<Prod_Availability> GetAvailability(object id)
         {
 
@@ -967,7 +1010,7 @@ namespace backoffice.ShopifyAPI
 
         public async Task<bool> unpublishitem(object id)
         {
-            string uturi = @"https://monpearte-it-solutions.myshopify.com/admin/api/2020-01/products/" + id.ToString() + ".json";
+            string uturi = @"https://monpearte-it-solutions.myshopify.com/admin/api/2021-01/products/" + id.ToString() + ".json";
 
             StringBuilder sb = new StringBuilder();
             StringWriter sw = new StringWriter(sb);
@@ -981,18 +1024,42 @@ namespace backoffice.ShopifyAPI
                 writer.WriteStartObject();
                 writer.WritePropertyName("id");
                 writer.WriteValue(id);
-                writer.WritePropertyName("published_at");
-                writer.WriteNull();
+                writer.WritePropertyName("published");
+                writer.WriteValue("false");
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+            }
+                        
+            return common.IsStatusCodeSuccess(await API.Put_Product_Data(uturi, sw.ToString()));
+        }
+
+        public async Task<bool> republishitem(object id)
+        {
+            string uturi = @"https://monpearte-it-solutions.myshopify.com/admin/api/2021-01/products/" + id.ToString() + ".json";
+
+            StringBuilder sb = new StringBuilder();
+            StringWriter sw = new StringWriter(sb);
+
+            using (JsonWriter writer = new JsonTextWriter(sw))
+            {
+                writer.Formatting = Formatting.Indented;
+
+                writer.WriteStartObject();
+                writer.WritePropertyName("product");
+                writer.WriteStartObject();
+                writer.WritePropertyName("id");
+                writer.WriteValue(id);
+                writer.WritePropertyName("published");
+                writer.WriteValue("true");
                 writer.WritePropertyName("published_scope");
                 writer.WriteValue("");
                 writer.WriteEndObject();
                 writer.WriteEndObject();
             }
 
-            HttpContent content = new StringContent(sw.ToString(), Encoding.UTF8, "application/json");
-
-            return common.IsStatusCodeSuccess(await put_product_data(uturi, content));
+            return common.IsStatusCodeSuccess(await API.Put_Product_Data(uturi, sw.ToString()));
         }
+
 
         public async Task<bool> updatesku(object id, string sku)
         {

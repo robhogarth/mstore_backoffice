@@ -40,12 +40,40 @@ namespace backoffice
             }
         }
 
+        public static string ReplaceTag(string tags, string newtag, string tag_ident)
+        {
+            if (tags != "")
+            {
+                string[] tagarray = tags.Split(',');
+
+                bool replaced = false;
+                for(int i = 0; i < tagarray.Length - 1; i++ )
+                {
+                    if (tagarray[i].ToLower().Contains(tag_ident.ToLower()))
+                    {
+                        replaced = true;
+                        tagarray[i] = newtag;
+                    }
+                }
+
+                //int mbot_index = Array.FindIndex(tagarray, FindTagString(newtag));
+
+                if (!replaced)
+                {
+                    Array.Resize(ref tagarray, tagarray.Length + 1);
+                    tagarray[tagarray.Length - 1] = newtag;
+                }
+
+                return String.Join(",", tagarray);
+            }
+            else
+                return newtag;
+        }
+
         public static string Updatembot(string tags = "")
         {
             if (tags != "")
             {
-
-
                 string[] tagarray = tags.Split(',');
 
                 int mbot_index = Array.FindIndex(tagarray, Findmbotstring);
@@ -55,7 +83,7 @@ namespace backoffice
                 else
                 {
                     Array.Resize(ref tagarray, tagarray.Length + 1);
-                    tagarray[tagarray.Length] = Generate_mbot_string();
+                    tagarray[tagarray.Length - 1] = Generate_mbot_string();
                 }
 
                 return String.Join(",", tagarray);
