@@ -37,13 +37,14 @@ namespace backoffice
         public abstract long Supplier_Location_Id { get; }
         public abstract string Supplier_Tag { get; }
         public abstract string CollectionID { get; }
+        public abstract bool MatchVariants { get; }
+        public abstract bool MultiSourceProducts { get; }
     }
 
     public abstract class FileSupplier: Supplier
     {
         public abstract string Filename { get; }
         public abstract string Temppath { get; }
-                
     }
 
     public static class SupplierProducer
@@ -60,6 +61,9 @@ namespace backoffice
                     break;
                 case SupplierType.TechData:
                     retval = new TechDataSupplier(filename);
+                    break;
+                case SupplierType.Wavelink:
+                    retval = new WavelinkSupplier(filename);
                     break;
                 default:
                     retval = new DickerDataSupplier(filename);
@@ -78,6 +82,10 @@ namespace backoffice
                 case SupplierType.TechData:
                     retval = new TechDataSupplier(filename);
                     break;
+                case SupplierType.Wavelink:
+                    retval = new WavelinkSupplier(filename);
+                    break;
+
                 default:
                     retval = new DickerDataSupplier(filename);
                     break;
@@ -97,7 +105,8 @@ namespace backoffice
         public override long Supplier_Location_Id { get { return 41088974985; } }
         public override string Supplier_Tag { get {return "MMTShipping"; } }
         public override string CollectionID { get { return "235730206870"; } }
-
+        public override bool MatchVariants { get { return false; } }
+        public override bool MultiSourceProducts { get { return true; } }
         public override async Task<int> LoadProducts()
         {
             await Task.Run(() => { Thread.Sleep(100); });
@@ -142,7 +151,8 @@ namespace backoffice
         public override string CollectionID { get { return "235731419286"; } }
         public override string Temppath { get { return @"d:\temp\mbot\techdata"; } }
         public override string Filename { get { return _filename; } }
-
+        public override bool MatchVariants { get { return false; } }
+        public override bool MultiSourceProducts { get { return true; } }
         public TechDataSupplier(string _file)
         {
             _filename = _file;
@@ -194,6 +204,8 @@ namespace backoffice
         public override string CollectionID { get { return "235732009110"; } }
         public override string Temppath { get { return @"d:\temp\mbot\dickerdata"; } }
         public override string Filename { get { return _filename; } }
+        public override bool MatchVariants { get { return false; } }
+        public override bool MultiSourceProducts { get { return true; } }
 
         public DickerDataSupplier(string _file)
         {
@@ -231,6 +243,65 @@ namespace backoffice
                     if (counter > 0)
                     {
                         prod = new DickerDataProduct(fields);
+                        this.Products.Add(prod);
+                    }
+
+                    counter++;
+                }
+            }
+
+            return this.Products.Count - 1;
+        }
+    }
+
+
+    public class WavelinkSupplier : FileSupplier
+    {
+        private string _filename;
+        public override long Supplier_Location_Id { get { return 50764808342; } }
+        public override string Supplier_Tag { get { return "WavelinkShipping"; } }
+        public override string CollectionID { get { return "236242698390"; } }
+        public override string Temppath { get { return @"d:\temp\mbot\wavelink"; } }
+        public override string Filename { get { return _filename; } }
+        public override bool MatchVariants { get { return true; } }
+        public override bool MultiSourceProducts { get { return false; } }
+
+        public WavelinkSupplier(string _file)
+        {
+            _filename = _file;
+        }
+
+        public async override Task<int> LoadProducts()
+        {
+            await Task.Yield();
+
+            if (this.Products == null)
+                this.Products = new List<Product>();
+            else
+                this.Products.Clear();
+
+
+            using (TextFieldParser parser = new TextFieldParser(Filename))
+            {
+
+                int counter = 0;
+                Product prod;
+
+                parser.TextFieldType = FieldType.Delimited;
+
+
+                parser.SetDelimiters(",");
+                while (!parser.EndOfData)
+                {
+                    //TODO: Exclude Dell Items so they are not screwed up by loading two different suppliers with similar parts.
+
+
+                    //Process row
+                    string[] fields = parser.ReadFields();
+
+                    if (counter > 0)
+                    {
+                        prod = new WavelinkProduct(fields);
                         this.Products.Add(prod);
                     }
 

@@ -402,7 +402,7 @@ namespace backoffice.ShopifyAPI
             return handle;
         }
 
-        public async Task<bool> AddMMTProduct(MMTPriceListProductsProduct newprod)
+        public async Task<bool> AddMMTProduct(Product newprod)
         {
             string add_prod_uri = @"https://monpearte-it-solutions.myshopify.com/admin/api/2020-04/products.json";
 
@@ -417,19 +417,19 @@ namespace backoffice.ShopifyAPI
                 writer.WritePropertyName("product");
                 writer.WriteStartObject();
                 writer.WritePropertyName("handle");
-                writer.WriteValue(newprod.Manufacturer[0].ManufacturerCode);
+                writer.WriteValue(newprod.SKU);
                 writer.WritePropertyName("title");
-                writer.WriteValue(newprod.Description[0].ShortDescription);
+                writer.WriteValue(newprod.Title);
                 writer.WritePropertyName("body_html");
-                writer.WriteValue(newprod.Description[0].LongDescription);
-                writer.WritePropertyName("product_type");
-                writer.WriteValue(newprod.Category[0].CategoryName);
+                writer.WriteValue(newprod.Title);
+                //writer.WritePropertyName("product_type");
+                //writer.WriteValue(newprod);
                 writer.WritePropertyName("published");
                 writer.WriteValue("false");
                 writer.WritePropertyName("tags");
-                writer.WriteValue("");
+                writer.WriteValue(CreateTags(newprod));
                 writer.WritePropertyName("vendor");
-                writer.WriteValue(newprod.Manufacturer[0].ManufacturerName);
+                writer.WriteValue(newprod.Vendor);
                 writer.WriteEndObject();
                 writer.WriteEndObject();
             }
@@ -438,58 +438,63 @@ namespace backoffice.ShopifyAPI
             //create main product fields
             var newshopprod = new
             {
-                handle = newprod.Manufacturer[0].ManufacturerCode,
-                title = newprod.Description[0].ShortDescription,
-                body_html = newprod.Description[0].LongDescription,
-                product_ytpe = newprod.Category[0].CategoryName,
-                published_scope = "global",
-                tags = "",
-                vendor = newprod.Manufacturer[0].ManufacturerName
+                handle = newprod.SKU,
+                title = newprod.Title,
+                body_html = newprod.Title,
+                product_ytpe = newprod.Title,
+                published_scope = "web",
+                tags = CreateTags(newprod),
+                vendor = newprod.Vendor
             };
                       
             HttpContent prod_content = new StringContent(JsonConvert.SerializeObject(newshopprod), Encoding.UTF8, "application/json");
 
-            HttpResponseMessage add_prod_response;
+            HttpStatusCode add_prod_response;
+            /*
+           add_prod_response = await API.Post_Product_Data(add_prod_uri, JsonConvert.SerializeObject(newshopprod));
 
-            add_prod_response = await post_product_data_response(add_prod_uri, prod_content);
+           if (common.IsStatusCodeSuccess(add_prod_response))
+           {
 
-            if (add_prod_response.IsSuccessStatusCode)
-            {
+              // string prod_response = await add_prod_response.Content.ReadAsStringAsync();
 
-                string prod_response = await add_prod_response.Content.ReadAsStringAsync();
+               string new_prod_id = prod_response.Substring(prod_response.IndexOf("id") + 5);
+               new_prod_id = new_prod_id.Substring(0, new_prod_id.IndexOf(","));
 
-                string new_prod_id = prod_response.Substring(prod_response.IndexOf("id") + 5);
-                new_prod_id = new_prod_id.Substring(0, new_prod_id.IndexOf(","));
-
-                string prodprice = "0";
+               string prodprice = "0";
 
 
 
-                string variant_id = prod_response.Substring(prod_response.IndexOf("variants"));
-                
-                variant_id = variant_id.Substring(prod_response.IndexOf("id") + 5);
-                variant_id = variant_id.Substring(0, new_prod_id.IndexOf(","));
+               string variant_id = prod_response.Substring(prod_response.IndexOf("variants"));
 
-                //update variant
-                //sku, taxable, price, 
-                var newshopvariant = new
-                {
-                    title = "Title",
-                    taxable = "false",
-                    price = prodprice,
-                    sku = newprod.Manufacturer[0].ManufacturerCode
-                };
+               variant_id = variant_id.Substring(prod_response.IndexOf("id") + 5);
+               variant_id = variant_id.Substring(0, new_prod_id.IndexOf(","));
 
-                //create inventoryitem
-                var newshopinvitem = new
-                {
-                    cost = newprod.Pricing[0].YourPrice,
-                    sku = newprod.Manufacturer[0].ManufacturerCode,
-                    requires_shipping = "true",
-                };
-            }
-            
+               //update variant
+               //sku, taxable, price, 
+               var newshopvariant = new
+               {
+                   title = "Title",
+                   taxable = "false",
+                   price = prodprice,
+                   sku = newprod.Manufacturer[0].ManufacturerCode
+               };
+
+               //create inventoryitem
+               var newshopinvitem = new
+               {
+                   cost = newprod.Pricing[0].YourPrice,
+                   sku = newprod.Manufacturer[0].ManufacturerCode,
+                   requires_shipping = "true",
+               };
+           }
+           */
             return true;
+        }
+
+        private object CreateTags(Product newprod)
+        {
+            throw new NotImplementedException();
         }
 
         public Shopify_Product MatchProductByMMT(string handle, string sku)

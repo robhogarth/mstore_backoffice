@@ -13,6 +13,7 @@ using System.Diagnostics.Tracing;
 using System.Data;
 using System.Text.RegularExpressions;
 using System.IO.Compression;
+using System.Collections.ObjectModel;
 
 namespace backoffice
 {
@@ -47,17 +48,20 @@ namespace backoffice
 
         public async Task<int> Test()
         {
-            string _file = @"d:\temp\datafeed.csv";
-            //string _file = @"d:\temp\0009043769.csv";
-            //string _file = @"c:\temp\PRICING_FEED_0009043769.zip";
+            string _wfile = @"d:\temp\WaveLink Scrape.csv";
+            string _tfile = @"d:\temp\0009043769.csv";
+            string _dfile = @"d:\temp\datafeed.csv";
+
+            await FixHiddenProds(SupplierType.MMT);
+            //await FixHiddenProds(SupplierType.TechData, _tfile);
+            //await FixHiddenProds(SupplierType.DickerData, _dfile);
 
             //await Process_TechData_DataFile(SupplierType.TechData, _file);
 
-            await UpdateETA(SupplierType.DickerData, _file);
+            //await UpdatePricing(SupplierType.Wavelink, _file);
             //await UpdatePricing(SupplierType.DickerData, _file);
 
-            await FindUnmatched(SupplierType.MMT);
-
+ //           await FindUnmatched(SupplierType.MMT);
 
             return 0;
         }
@@ -439,10 +443,8 @@ namespace backoffice
 
             try
             {
-
                 var supplier_download = supplier.LoadProducts();
-
-                var shopify_download = Download_Shopify(null, false, true);
+                var shopify_download = Download_Shopify(new string[] { "collection_id=" + supplier.CollectionID }, false, true);
 
                 Get_mstore_stock();
 
@@ -493,7 +495,7 @@ namespace backoffice
                             nomatchcount++;
                             if (product.Variants == null | (product.PublishedAt == null))
                             {
-                                LogStr(String.Format(@"""{0}"",""{1}"",""{2}""", product.Handle.ToLower(), product.Title, "null"));
+                                //LogStr(String.Format(@"""{0}"",""{1}"",""{2}""", product.Handle.ToLower(), product.Title, "Not published on Shopify"));
                             }
                             else
                             {
@@ -538,6 +540,89 @@ namespace backoffice
             return true;
         }
 
+        public async Task<bool> FixHiddenProds(SupplierType sType = SupplierType.MMT, string filename = "")
+        {
+            shopify = new Shopify();
+            Supplier supplier = SupplierProducer.CreateSupplier(sType, filename);
+
+            try
+            {
+                var supplier_download = supplier.LoadProducts();
+                var shopify_download = Download_Shopify(new string[] { "collection_id=" + supplier.CollectionID }, false, true);
+
+                Get_mstore_stock();
+
+                await Task.WhenAll(supplier_download, shopify_download);
+                LogStr("Updating Unmatched Items...", true);
+            }
+            catch (Exception ex)
+            {
+                LogStr(ex.Message, true);
+            }
+
+            try
+            {
+
+                int nomatchcount = 0;
+                Product shopifymatchproduct;
+
+                foreach (Shopify_Product product in shopify.products)
+                {
+
+                    if (product.Vendor != "Sangoma")
+                    {
+                        bool match = false;
+
+                        try
+                        {
+                            shopifymatchproduct = shopify.MatchProductByShopify(product.Handle, product.Variants.FirstOrDefault().Sku, supplier.Products);
+                        }
+                        catch (Exception ex)
+                        {
+                            shopifymatchproduct = null;
+                            LogStr(ex.Message);
+                        }
+
+                        if (shopifymatchproduct != null)
+                        {
+                            match = true;
+                        }
+
+                        if (mstore_stock.Contains(product.Handle))
+                        {
+                            match = true;
+                        }
+
+                        if (match)
+                        {
+                            if (product.PublishedAt == null)
+                            {
+                                if (await shopify.republishitem(product.Id))
+                                {
+                                    LogStr(String.Format(@"""{0}"",""{1}"",""{2}"" - Successfully REpublished", product.Handle.ToLower(), product.Title, product.Variants[0].Sku));
+                                }
+                                else
+                                {
+                                    LogStr(String.Format(@"""{0}"",""{1}"",""{2}"" - Error REpublishing", product.Handle.ToLower(), product.Title, product.Variants[0].Sku));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Error Processing item", ex);
+            }
+
+            if (verbose)
+            {
+                LogStr("Unmatched Product Search Completed");
+            }
+
+
+            return true;
+        }
 
         /// <summary>
         /// Updates pricing for supplier based on a lot of complex assumptions
@@ -552,9 +637,18 @@ namespace backoffice
 
             try
             {
-
                 var supplier_download = supplier.LoadProducts();
-                var shopify_download = Download_Shopify();
+
+                Task shopify_download;
+                if (supplier.MultiSourceProducts)
+                {
+                    shopify_download = Download_Shopify();
+                }
+                else
+                {
+                    shopify_download = Download_Shopify(new string[] { "collection_id=" + supplier.CollectionID});
+                }
+
 
                 await Task.WhenAll(supplier_download, shopify_download);
                 LogStr("Product Datafeed load completed", true);
@@ -568,22 +662,27 @@ namespace backoffice
             string new_price = "";
 
             Shopify_Product matcheditem;
+            Variant MatchedVariant;
 
             // Download associated inventory items so you can get cost price etc
             // shopify makes this a two part process due to I expect variants or something
 
-            Dictionary<string, string> inv_ids = new Dictionary<string, string>();
+            List<string> inv_ids = new List<string>();
             Dictionary<string, InventoryItem> invList = new Dictionary<string, InventoryItem>();
             InventoryItems inv_items;
             string inv_uri = "";
 
             foreach (Shopify_Product s_prod in shopify.products)
             {
-                inv_ids.Add(s_prod.Handle, s_prod.Variants.FirstOrDefault().InventoryItemId.ToString());
+                foreach (Variant s_prod_var in s_prod.Variants)
+                {
+                    inv_ids.Add(s_prod_var.InventoryItemId.ToString());
+                }
+
                 if (inv_ids.Count > 100)
                 {
                     //LogStr("Retreiving 100 inventory items", true);
-                    foreach (string inv_id in inv_ids.Values)
+                    foreach (string inv_id in inv_ids)
                     {
                         inv_uri += "," + inv_id;
                     }
@@ -606,7 +705,7 @@ namespace backoffice
             if (inv_ids.Count > 0)
             {
                 //LogStr("Retreiving remaining inventory items", true);
-                foreach (string inv_id in inv_ids.Values)
+                foreach (string inv_id in inv_ids)
                 {
                     inv_uri += "," + inv_id;
                 }
@@ -634,6 +733,8 @@ namespace backoffice
             bool supplier_match = false;
 
             double comp_cost_price = 0;
+            string[] formatlistex;
+
 
             foreach (Product supplier_prod in supplier.Products)
             {
@@ -658,7 +759,7 @@ namespace backoffice
                             inv = invList[matcheditem.Variants.FirstOrDefault().InventoryItemId.ToString()];
                         }
 
-                        if (inv != null)
+                        if ((inv != null) & (matcheditem.Variants.Count() < 2))
                         {
                             supplier_match = Match_Product_Tag(matcheditem.Tags, supplier.Supplier_Tag);
                             if (!supplier_match)
@@ -688,7 +789,7 @@ namespace backoffice
                                     }
                                 }
 
-                               if (matcheditem.Variants.FirstOrDefault().Taxable)
+                                if (matcheditem.Variants.FirstOrDefault().Taxable)
                                     comp_cost_price = common.RemoveGST(supplier_prod.CostPrice);
                                 else
                                     comp_cost_price = supplier_prod.CostPrice;
@@ -718,11 +819,11 @@ namespace backoffice
                                     if (matcheditem.Variants.FirstOrDefault().CompareAtPrice == null)
                                         new_price = shopify.createnewprice(inv.Cost, "0", matcheditem.Variants.FirstOrDefault().Price, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify(), false, false, matcheditem.Variants[0].Taxable);
                                     else
-                                        new_price = shopify.createnewprice(inv.Cost, matcheditem.Variants.FirstOrDefault().CompareAtPrice.ToString(), matcheditem.Variants.FirstOrDefault().Price, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify(), false, false, matcheditem.Variants[0].Taxable);                                   
+                                        new_price = shopify.createnewprice(inv.Cost, matcheditem.Variants.FirstOrDefault().CompareAtPrice.ToString(), matcheditem.Variants.FirstOrDefault().Price, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify(), false, false, matcheditem.Variants[0].Taxable);
                                 }
                                 catch (Exception ex)
                                 {
-                                    string[] formatlistex = { matcheditem.Handle, matcheditem.Title, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify(), ex.Message };
+                                    formatlistex = new string[] { matcheditem.Handle, matcheditem.Title, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify(), ex.Message };
                                     LogStr(String.Format(@"""{0}"",""{1}"",""{2}"",""{3}"", ""Match Found. Price Not Equal. Error creating New Price"", ""{4}""", formatlistex));
                                     new_price = "0";
                                 }
@@ -748,14 +849,14 @@ namespace backoffice
                                     }
                                     catch (Exception ex)
                                     {
-                                        string[] formatlistex = { matcheditem.Handle, matcheditem.Title, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify(), ex.Message };
+                                        formatlistex = new string[] { matcheditem.Handle, matcheditem.Title, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify(), ex.Message };
                                         LogStr(String.Format(@"""{0}"",""{1}"",""{2}"",""{3}"", ""Match Found. Price Not Equal. Error creating uploading new pricing"", ""{4}""", formatlistex));
                                     }
 
                                 }
                                 else
                                 {
-                                    string[] formatlistex = { matcheditem.Handle, matcheditem.Title, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify() };
+                                    formatlistex = new string[] { matcheditem.Handle, matcheditem.Title, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify() };
                                     LogStr(String.Format(@"""{0}"",""{1}"",""{2}"",""{3}"", ""Match Found. Price Not Equal. New price is 0", formatlistex));
                                 }
 
@@ -771,13 +872,47 @@ namespace backoffice
                             }
                         }
 
-                        shopify.products.Remove(matcheditem);
+                        if (!supplier.MatchVariants)
+                            shopify.products.Remove(matcheditem);
                     }
-                    else
+
+                    if (supplier.MatchVariants)
                     {
-                        string[] formatlistex = { supplier_prod.SKU, supplier_prod.Title, supplier_prod.CostPrice.ToShopify() };
-                        //LogStr(String.Format(@"""{0}"",""{1}"",""{2}"", ""No Match Found.", formatlistex));
+
+                        MatchedVariant = MatchVariantbySKU(shopify.products, supplier_prod.SKU);
+
+                        if (MatchedVariant != null)
+                        {
+
+                            InventoryItem inv = null;
+
+                            if (invList.ContainsKey(MatchedVariant.InventoryItemId.ToString()))
+                            {
+                                inv = invList[MatchedVariant.InventoryItemId.ToString()];
+                            }
+
+                            //evaluate if pricing is changed
+                            update_price = PriceChanged(MatchedVariant, inv, supplier_prod);
+                            if (update_price)
+                            {
+                                new_price = shopify.createnewprice(inv.Cost, "0", MatchedVariant.Price, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify(), false, false, MatchedVariant.Taxable);
+
+                                //update variant if required
+                                await shopify.updateprice(inv.Id, MatchedVariant.Id, supplier_prod.CostPrice.ToShopify(), new_price, supplier_prod.RRPPrice.ToShopify());
+                                string[] formatlist = { MatchedVariant.Id.ToString(), MatchedVariant.Title, new_price, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify() };
+                                LogStr(String.Format(@"""{0}"",""{1}"",""{2}"",""{3}"",""{4}"", Match Found. Price Not Equal. Created New Price", formatlist));
+                            }
+                            else
+                                LogStr(supplier_prod.SKU + " - pricing update not required");
+                        }
+                        else
+                        {
+                            LogStr(supplier_prod.SKU + " - couldn't match sku");
+                        }
                     }
+
+                    formatlistex = new string[] { supplier_prod.SKU, supplier_prod.Title, supplier_prod.CostPrice.ToShopify() };
+                    //LogStr(String.Format(@"""{0}"",""{1}"",""{2}"", ""No Match Found.", formatlistex));
                 }
                 catch (Exception ex)
                 {
@@ -789,6 +924,65 @@ namespace backoffice
 
             LogStr("Update Pricing Completed", true);
             return true;
+        }
+
+        private bool PriceChanged(Variant matchedVariant, InventoryItem inv, Product supplier_prod, string Tags = "")
+        {
+            double comp_cost_price;
+            bool update_price = false;
+            bool update_cost = false;
+
+            if (matchedVariant.CompareAtPrice != null)
+            {
+
+                if (matchedVariant.CompareAtPrice.ToString() != supplier_prod.RRPPrice.ToShopify())
+                {
+                    update_price = true;
+                }
+            }
+
+            if (matchedVariant.Taxable)
+                comp_cost_price = common.RemoveGST(supplier_prod.CostPrice);
+            else
+                comp_cost_price = supplier_prod.CostPrice;
+
+            if (inv.Cost != comp_cost_price.ToShopify())
+            {
+                update_cost = true;
+            }
+
+            if (Tags.Contains("specialprice"))
+            {
+                update_cost = false;
+                update_price = false;
+                LogStr(matchedVariant.Id + " contains special price.  Pricing not evaluated");
+            }
+
+            return (update_price & update_cost);
+        }
+
+        private Variant MatchVariantbySKU(ObservableCollection<Shopify_Product> products, string sKU)
+        {
+            Variant MatchedVariant = null;
+            bool matched = false;
+
+            foreach(Shopify_Product sprod in products)
+            {
+                foreach(Variant prod_var in sprod.Variants)
+                {
+                    if (prod_var.Sku.ToLower() == sKU.ToLower())
+                    {
+                        MatchedVariant = prod_var;
+                        matched = true;
+                    }
+                    if (matched)
+                        break;
+                }
+                if (matched)
+                    break;
+            }
+
+            return MatchedVariant;
         }
 
         private async Task<bool> Evaluate_Product_Supplier_Change(Shopify_Product matcheditem, InventoryItem inv, Product sprod)
@@ -1025,24 +1219,6 @@ namespace backoffice
                 return true;
             }
         }
-
-        /*
-        private void Update_Metafields()
-        {
-            MMTPriceListProducts mmtproducts = (MMTPriceListProducts)pricelist.Items[1];
-
-            LogStr("Starting ETA Metafield Update", true);
-
-            foreach (MMTPriceListProductsProduct prod in mmtproducts.Product)
-            {
-                string result = shopify.update_availability(prod.Manufacturer[0].ManufacturerCode, prod.Availability, prod.ETA).GetAwaiter().GetResult();
-                LogStr(DateTime.Now + "," + prod.Manufacturer[0].ManufacturerCode + "," + result);
-            }
-
-            LogStr("Finished ETA Metafield Update", true);
-
-        }
-        */
 
         public async void UpdateShippingTag(Shopify_Product matcheditem, string supplier_Tag)
         {

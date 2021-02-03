@@ -48,8 +48,6 @@ namespace backoffice
         {
             return StatusTagPrefix + status;
         }
-
-
     }
 
 
@@ -377,5 +375,96 @@ namespace backoffice
         }
     }
 
+    public class WavelinkProduct : Product
+    {
+        /*
+         * Wavelink rField Headers
+         * 0 -  Status
+         * 1 -  Available
+         * 2 -  Status
+         * 3 -  SKU
+         * 4 -  BuyPrice Ex
+         * 5 -  RRP Ex
+         * 6 -  Title
+         * 7 -  ImageURL
+         */
 
+        private string[] rFields;
+        private const string CostStringPrefix = "Reseller Buy ex GST:  $";
+        private const string RRPStringPrefix = "MSRP ex GST: $";
+
+        public override string Title
+        {
+            get
+            {
+                return this.rFields[6];
+            }
+        }
+        public override double CostPrice
+        {
+            get
+            {
+                if (this.rFields[4].Contains(CostStringPrefix))
+                    this.rFields[4] = this.rFields[4].Substring(CostStringPrefix.Length);
+                return Math.Round(Convert.ToDouble(this.rFields[4]) * 1.1, 2);
+            }
+        }
+        public override double RRPPrice
+        {
+            get
+            {
+                if (this.rFields[5].Contains(RRPStringPrefix))
+                    this.rFields[5] = this.rFields[5].Substring(RRPStringPrefix.Length);
+                return Math.Round(Convert.ToDouble(this.rFields[5]) * 1.1, 2);
+            }
+        }
+        public override string Vendor
+        {
+            get
+            {
+                return "Fortinet";
+            }
+        }
+        public override string SKU
+        {
+            get
+            {
+                return this.rFields[3];
+            }
+        }
+        public override int Available
+        {
+            get
+            {
+                return Convert.ToInt32(this.rFields[1]);
+            }
+        }
+        public override DateTime ETA
+        {
+            get
+            {
+                    return DateTime.MinValue;
+            }
+        }
+        public override string Status
+        {
+
+            get
+            {
+                return this.rFields[0];
+            }
+        }
+
+        public string[] RawFields { get { return this.rFields; } }
+
+        public WavelinkProduct()
+        {
+
+        }
+
+        public WavelinkProduct(string[] fields)
+        {
+            this.rFields = fields;
+        }
+    }
 }
