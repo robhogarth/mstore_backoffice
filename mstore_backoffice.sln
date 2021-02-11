@@ -13,6 +13,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "cloudlogging", "cloudloggin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "backoffice_test", "backoffice_test\backoffice_test.csproj", "{688EBFEC-3D17-4241-B419-4CE4FE16A267}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudLogAPI", "CloudLogAPI\CloudLogAPI.csproj", "{84492A89-AB64-4DD6-AEC0-3400E62889B1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudLogAPI.Tests", "CloudLogAPI.Tests\CloudLogAPI.Tests.csproj", "{EE15B5B5-CFA4-4864-8748-512F55022F94}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +43,14 @@ Global
 		{688EBFEC-3D17-4241-B419-4CE4FE16A267}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{688EBFEC-3D17-4241-B419-4CE4FE16A267}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{688EBFEC-3D17-4241-B419-4CE4FE16A267}.Release|Any CPU.Build.0 = Release|Any CPU
+		{84492A89-AB64-4DD6-AEC0-3400E62889B1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{84492A89-AB64-4DD6-AEC0-3400E62889B1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{84492A89-AB64-4DD6-AEC0-3400E62889B1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{84492A89-AB64-4DD6-AEC0-3400E62889B1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE15B5B5-CFA4-4864-8748-512F55022F94}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE15B5B5-CFA4-4864-8748-512F55022F94}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE15B5B5-CFA4-4864-8748-512F55022F94}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE15B5B5-CFA4-4864-8748-512F55022F94}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

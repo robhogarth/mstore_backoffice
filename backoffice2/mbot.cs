@@ -22,7 +22,25 @@ namespace backoffice
         public int Threshold { get; set; }
         public string Message { get; set; }
         public bool ConsoleOnly { get; set; }
+        public Dictionary<String, String> properties { get; set; }
+        public Dictionary<String,Double> AIMetrics { get; set; }
+
     }
+
+    public class NotifyExceptionEventArgs: EventArgs
+    {
+        public Exception NException { get; set; }
+        public IDictionary<string,string> Properties { get; set; }
+        public IDictionary<string, Double> Metrics { get; set; }
+    }
+
+    public class NotifyProductEventArgs: EventArgs
+    {
+        public string EventName { get; set; }
+        public IDictionary<string, string> Properties { get; set; }
+        public IDictionary<string, Double> Metrics { get; set; }
+    }
+
 
     public class MBot
     {
@@ -39,6 +57,8 @@ namespace backoffice
         public bool verbose = false;
 
         public event EventHandler<NotifyEventArgs> Notify;
+        public event EventHandler<NotifyExceptionEventArgs> Exception;
+        public event EventHandler<NotifyProductEventArgs> ProductEvent;
 
         public MBot(string stock_file)
         {
@@ -50,38 +70,39 @@ namespace backoffice
         {
             string _wfile = @"d:\temp\WaveLink Scrape.csv";
             string _tfile = @"d:\temp\0009043769.csv";
-            string _dfile = @"d:\temp\datafeed.csv";
+            string _dfile = @"c:\temp\datafeed.csv";
 
-            await FixHiddenProds(SupplierType.MMT);
+            //await FixHiddenProds(SupplierType.MMT);
             //await FixHiddenProds(SupplierType.TechData, _tfile);
             //await FixHiddenProds(SupplierType.DickerData, _dfile);
 
-            //await Process_TechData_DataFile(SupplierType.TechData, _file);
-
-            //await UpdatePricing(SupplierType.Wavelink, _file);
-            //await UpdatePricing(SupplierType.DickerData, _file);
-
- //           await FindUnmatched(SupplierType.MMT);
+            UpdatePricing(SupplierType.MMT).Wait();
 
             return 0;
         }
 
 
-        public async Task<bool> Process_DataFile(SupplierType stype, string filename)
+        public async Task<bool> Process_DataFile(SupplierType stype, string filename, bool extractFile = true)
         {
             try
             {
-                string _file = ExtractDataFile(stype, filename);
+                string _file = "";
+
+                if (extractFile)
+                    _file = ExtractDataFile(stype, filename);
+                else
+                    _file = filename;
 
                 await UpdatePricing(stype, _file);
                 await UpdateETA(stype, _file);
-
 
                 return true;
             }
             catch (Exception ex)
             {
-                LogStr("ProcessDatafileException - " + ex.Message);
+                //LogStr("ProcessDatafileException - " + ex.Message);
+
+                LogEx(ex);
                 return false;
             }
         }
@@ -91,37 +112,53 @@ namespace backoffice
             FileSupplier sup = SupplierProducer.CreateFileSupplier(sType);
 
             string _path = sup.Temppath;
-
-            if (Directory.Exists(_path))
+            
+            try
             {
-                foreach (string file in Directory.EnumerateFiles(_path))
+                if (Directory.Exists(_path))
                 {
-                    File.Delete(file);
+                    foreach (string file in Directory.EnumerateFiles(_path))
+                    {
+                        File.Delete(file);
+                    }
+
                 }
 
-            }             
+                ZipFile.ExtractToDirectory(_file, _path);
+                string[] files = System.IO.Directory.GetFiles(_path);
 
-            ZipFile.ExtractToDirectory(_file, _path);
-            string[] files = System.IO.Directory.GetFiles(_path);
+                return files[0];
+            }
+            catch (Exception ex)
+            {
+                LogEx(ex);
+            }
 
-            return files[0];
+            return "";
         }
 
         private bool IsProductMatch(Shopify_Product s_product, Product product)
         {
             bool match = false;
 
-            if (s_product.Handle.ToLower() == product.SKU.ToLower())
+            try
             {
-                match = true;
-            }
-            else
-            {
-                //if (s_product.variants.FirstOrDefault().sku.ToLower() == mmt_prod.Manufacturer[0].ManufacturerCode.ToLower())
-                if (s_product.Variants.FirstOrDefault().Sku.ToLower() == product.SKU.ToLower())
+                if (s_product.Handle.ToLower() == product.SKU.ToLower())
                 {
                     match = true;
                 }
+                else
+                {
+                    //if (s_product.variants.FirstOrDefault().sku.ToLower() == mmt_prod.Manufacturer[0].ManufacturerCode.ToLower())
+                    if (s_product.Variants.FirstOrDefault().Sku.ToLower() == product.SKU.ToLower())
+                    {
+                        match = true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogEx(ex);
             }
 
             return match;
@@ -260,11 +297,12 @@ namespace backoffice
         /// <returns></returns>
         public async Task<bool> UpdateClearance()
         {
+            LogEvent("UpdateClearance");
             shopify = new Shopify();
 
             try
             {
-                LogStr("Downloading Product Lists - Async", true);
+                LogStr("Downloading Products", true);
 
                 //var mmt_download = Download_MMTAsync(MMTDownloadType.Clearance);
                 Supplier mmt = new MMTSupplier();
@@ -312,7 +350,16 @@ namespace backoffice
                     {
                         sprod.Tags = RemoveClearanceTag(sprod.Tags);
                         await shopify.UpdateTags(sprod.Id, sprod.Tags);
-                        LogStr(String.Format(@"""{0}"", Item removed from list", sprod.Id.ToString()));
+
+                        //LogStr(String.Format(@"""{0}"", Item removed from list", sprod.Id.ToString()));
+
+                        Dictionary<string, string> props = new Dictionary<string, string>();
+                        props.Add("SKU", sprod.Variants.FirstOrDefault().Sku);
+                        props.Add("Handle", sprod.Handle);
+                        props.Add("Tags", sprod.Tags);
+                        LogEvent("RemoveClearanceTag",props);
+
+                        
 
                     }
                 }
@@ -367,7 +414,14 @@ namespace backoffice
                     {
                         sprod_match.Tags = AddClearanceTag(sprod_match.Tags);
                         await shopify.UpdateTags(sprod_match.Id, sprod_match.Tags);
-                        LogStr(String.Format(@"""{0}"", Item added to clearance collection", sprod_match.Id.ToString()));
+
+                        //LogStr(String.Format(@"""{0}"", Item added to clearance collection", sprod_match.Id.ToString()));
+
+                        Dictionary<string, string> props = new Dictionary<string, string>();
+                        props.Add("SKU", sprod_match.Variants.FirstOrDefault().Sku);
+                        props.Add("Handle", sprod_match.Handle);
+                        props.Add("Tags", sprod_match.Tags);
+                        LogEvent("adDClearanceTag", props);
                     }
                     else
                     {
@@ -438,6 +492,8 @@ namespace backoffice
         /// <returns></returns>
         public async Task<bool> FindUnmatched(SupplierType sType = SupplierType.MMT, string filename = "")
         {
+            LogEvent("FindUnmatchedItems");
+
             shopify = new Shopify();
             Supplier supplier = SupplierProducer.CreateSupplier(sType, filename);
 
@@ -453,7 +509,8 @@ namespace backoffice
             }
             catch (Exception ex)
             {
-                LogStr(ex.Message, true);
+                //LogStr(ex.Message, true);
+                LogEx(ex);
             }
 
             try
@@ -502,6 +559,12 @@ namespace backoffice
                                 if (await shopify.unpublishitem(product.Id))
                                 {
                                     LogStr(String.Format(@"""{0}"",""{1}"",""{2}"" - Successfully unpublished", product.Handle.ToLower(), product.Title, product.Variants[0].Sku));
+
+                                    Dictionary<string, string> props = new Dictionary<string, string>();
+                                    props.Add("SKU", product.Variants.FirstOrDefault().Sku);
+                                    props.Add("Handle", product.Handle);
+                                    props.Add("Tags", product.Tags);
+                                    LogEvent("UnpublishedProduct", props);
                                 }
                                 else
                                 {
@@ -517,6 +580,12 @@ namespace backoffice
                                 if (await shopify.republishitem(product.Id))
                                 {
                                     LogStr(String.Format(@"""{0}"",""{1}"",""{2}"" - Successfully REpublished", product.Handle.ToLower(), product.Title, product.Variants[0].Sku));
+
+                                    Dictionary<string, string> props = new Dictionary<string, string>();
+                                    props.Add("SKU", product.Variants.FirstOrDefault().Sku);
+                                    props.Add("Handle", product.Handle);
+                                    props.Add("Tags", product.Tags);
+                                    LogEvent("RepublishedProduct", props);
                                 }
                                 else
                                 {
@@ -529,7 +598,7 @@ namespace backoffice
             }
             catch (Exception ex)
             {
-                throw new Exception("Error Processing item", ex);
+                LogEx(ex);
             }
 
             if (verbose)
@@ -631,6 +700,7 @@ namespace backoffice
         /// <returns></returns>
         public  async Task<bool> UpdatePricing(SupplierType sType = SupplierType.MMT, string filename = "")
         {
+            LogEvent("UpdatePricing");
 
             shopify = new Shopify();
             Supplier supplier = SupplierProducer.CreateSupplier(sType, filename);
@@ -649,14 +719,13 @@ namespace backoffice
                     shopify_download = Download_Shopify(new string[] { "collection_id=" + supplier.CollectionID});
                 }
 
-
                 await Task.WhenAll(supplier_download, shopify_download);
                 LogStr("Product Datafeed load completed", true);
                 LogStr("Updating Pricing...", true);
             }
             catch (Exception ex)
             {
-                LogStr(ex.Message, true);
+                LogEx(ex);
             }
            
             string new_price = "";
@@ -734,13 +803,11 @@ namespace backoffice
 
             double comp_cost_price = 0;
             string[] formatlistex;
-
-
+            
             foreach (Product supplier_prod in supplier.Products)
             {
                 try
                 {
-
                     update_price = false;
                     update_cost = false;
                     force_eta_update = false;
@@ -768,9 +835,15 @@ namespace backoffice
                                 if (change_supplier)
                                 {
                                     LogStr(supplier_prod.SKU + " - Changing to new supplier");
+
+                                    Dictionary<string, string> props = new Dictionary<string, string>();
+                                    props.Add("SKU", supplier_prod.SKU);
+                                    props.Add("MatchedItem", matcheditem.Handle);
+                                    LogEvent("ChangeSupplier", props);
+
                                     force_eta_update = true;
                                     bool change_result = await shopify.Change_InventoryLocation(inv.Id, supplier.Supplier_Location_Id);
-                                    UpdateShippingTag(matcheditem, supplier.Supplier_Tag);
+                                    matcheditem.Tags = await UpdateShippingTag(matcheditem, supplier.Supplier_Tag, false);
                                 }
                             }
 
@@ -782,7 +855,6 @@ namespace backoffice
                             {
                                 if (matcheditem.Variants.FirstOrDefault().CompareAtPrice != null)
                                 {
-
                                     if (matcheditem.Variants.FirstOrDefault().CompareAtPrice.ToString() != supplier_prod.RRPPrice.ToShopify())
                                     {
                                         update_price = true;
@@ -790,7 +862,15 @@ namespace backoffice
                                 }
 
                                 if (matcheditem.Variants.FirstOrDefault().Taxable)
+                                {
                                     comp_cost_price = common.RemoveGST(supplier_prod.CostPrice);
+
+                                    Dictionary<string, string> props = new Dictionary<string, string>();
+                                    props.Add("SKU", matcheditem.Variants.FirstOrDefault().Sku);
+                                    props.Add("Title", matcheditem.Title);
+
+                                    LogEvent("ItemTaxable", props);
+                                }
                                 else
                                     comp_cost_price = supplier_prod.CostPrice;
 
@@ -823,6 +903,7 @@ namespace backoffice
                                 }
                                 catch (Exception ex)
                                 {
+                                    LogEx(ex);
                                     formatlistex = new string[] { matcheditem.Handle, matcheditem.Title, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify(), ex.Message };
                                     LogStr(String.Format(@"""{0}"",""{1}"",""{2}"",""{3}"", ""Match Found. Price Not Equal. Error creating New Price"", ""{4}""", formatlistex));
                                     new_price = "0";
@@ -844,11 +925,25 @@ namespace backoffice
                                         else
                                             await shopify.updateprice(inv.Id, matcheditem.Variants.FirstOrDefault().Id, supplier_prod.CostPrice.ToShopify(), new_price, supplier_prod.RRPPrice.ToShopify());
 
+
+                                        Dictionary<string, string> props = new Dictionary<string, string>();
+                                        props.Add("SKU", matcheditem.Variants.FirstOrDefault().Sku);
+                                        props.Add("Title", matcheditem.Title);
+                                        props.Add("Old_Cost", inv.Cost);
+                                        props.Add("New_Cost", supplier_prod.CostPrice.ToShopify());
+                                        props.Add("Old_Price", matcheditem.Variants.FirstOrDefault().Price);
+                                        props.Add("New_Price", new_price);
+                                        props.Add("Old_RRP", matcheditem.Variants.FirstOrDefault().CompareAtPrice.ToString());
+                                        props.Add("New_RRP", supplier_prod.RRPPrice.ToShopify());
+
+                                        LogEvent("UpdatePrice", props);
+
                                         LogStr(String.Format(@"""{0}"",""{1}"",""{2}"",""{3}"",""{4}"", Match Found. Price Not Equal. Created New Price", formatlist));
 
                                     }
                                     catch (Exception ex)
                                     {
+                                        LogEx(ex);
                                         formatlistex = new string[] { matcheditem.Handle, matcheditem.Title, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify(), ex.Message };
                                         LogStr(String.Format(@"""{0}"",""{1}"",""{2}"",""{3}"", ""Match Found. Price Not Equal. Error creating uploading new pricing"", ""{4}""", formatlistex));
                                     }
@@ -899,6 +994,20 @@ namespace backoffice
 
                                 //update variant if required
                                 await shopify.updateprice(inv.Id, MatchedVariant.Id, supplier_prod.CostPrice.ToShopify(), new_price, supplier_prod.RRPPrice.ToShopify());
+
+                                Dictionary<string, string> props = new Dictionary<string, string>();
+                                props.Add("Title", MatchedVariant.Title);
+                                props.Add("SKU", MatchedVariant.Sku);
+                                props.Add("Old_Cost", inv.Cost);
+                                props.Add("New_Cost", supplier_prod.CostPrice.ToShopify());
+                                props.Add("Old_Price", MatchedVariant.Price);
+                                props.Add("New_Price", new_price);
+                                props.Add("Old_RRP", MatchedVariant.CompareAtPrice.ToString());
+                                props.Add("New_RRP", supplier_prod.RRPPrice.ToShopify());
+                                props.Add("UpdateVariant", MatchedVariant.Id.ToString());
+
+                                LogEvent("UpdatePrice", props);
+
                                 string[] formatlist = { MatchedVariant.Id.ToString(), MatchedVariant.Title, new_price, supplier_prod.CostPrice.ToShopify(), supplier_prod.RRPPrice.ToShopify() };
                                 LogStr(String.Format(@"""{0}"",""{1}"",""{2}"",""{3}"",""{4}"", Match Found. Price Not Equal. Created New Price", formatlist));
                             }
@@ -916,11 +1025,10 @@ namespace backoffice
                 }
                 catch (Exception ex)
                 {
+                    LogEx(ex);
                     LogStr("Error matching product - " + supplier_prod.SKU + "  Moving to next item: " + ex.Message);
                 }
-
             }
-
 
             LogStr("Update Pricing Completed", true);
             return true;
@@ -1054,6 +1162,8 @@ namespace backoffice
         
         public async Task<bool> UpdateETA(SupplierType sType = SupplierType.MMT, string filename = "")
         {
+            LogEvent("UpdateETA");
+
             shopify = new Shopify();
             Supplier supplier = SupplierProducer.CreateSupplier(sType, filename);
 
@@ -1070,7 +1180,9 @@ namespace backoffice
             }
             catch (Exception ex)
             {
-                LogStr(ex.Message, true);
+                //LogStr(ex.Message, true);
+                
+                LogEx(ex);
             }
 
             LogStr("Starting ETA Metafield Update", true);
@@ -1086,7 +1198,13 @@ namespace backoffice
                     if (shop_prod != null)
                     {
                         result = await shopify.Update_Availability(shop_prod, prod);
+
                         //LogStr(DateTime.Now + "," + prod.SKU + "," + result);
+                        Dictionary<string, string> props = new Dictionary<string, string>();
+                        props.Add("SKU", prod.SKU);
+                        props.Add("Title", prod.Title);
+                        LogEvent("UpdateETA", props);
+
 
                         LogStr(DateTime.Now + "," + prod.SKU + "," + prod.Available + " - " + prod.ETA.ToString() + " - " + prod.Status + ": " + result);
                     }
@@ -1095,7 +1213,12 @@ namespace backoffice
                 }
                 catch (Exception ex)
                 {
-                    LogStr(DateTime.Now + "," + prod.SKU + "," + ex.Message);
+                    //LogStr(DateTime.Now + "," + prod.SKU + "," + ex.Message);
+
+                    Dictionary<string, string> props = new Dictionary<string, string>();
+                    props.Add("SKU", prod.SKU);
+                    props.Add("Title", prod.Title);
+                    LogEx(ex, props);
                 }
             }
 
@@ -1181,24 +1304,30 @@ namespace backoffice
         {
             bool retval = false;
 
-            LogStr("Processing Shopify Download", true);
-
-            shopify = new Shopify();
-
-            bool shopify_download = await shopify.getallproducts(querystrings, images, false, include_unpublished);
-
-            if ((shopify.products.Count > 0) & (shopify_download))
+            try
             {
-                LogStr("Shopify Downloaded Completed", true);
-                LogStr("Successful download - " + shopify.products.Count() + " items loaded", true);
+                LogStr("Processing Shopify Download", true);
 
-                retval = true;
+                shopify = new Shopify();
+
+                bool shopify_download = await shopify.getallproducts(querystrings, images, false, include_unpublished);
+
+                if ((shopify.products.Count > 0) & (shopify_download))
+                {
+                    LogStr("Shopify Downloaded Completed", true);
+                    LogStr("Successful download - " + shopify.products.Count() + " items loaded", true);
+
+                    retval = true;
+                }
+                else
+                {
+                    LogStr("Shopify Download returned no results");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                LogStr("Shopify Download returned no results");
+                LogEx(ex);
             }
-
             return retval;
         }
 
@@ -1220,7 +1349,17 @@ namespace backoffice
             }
         }
 
-        public async void UpdateShippingTag(Shopify_Product matcheditem, string supplier_Tag)
+
+
+        /// <summary>
+        /// Updates Shipping Tag with new supplier tag and
+        /// updates tags on shopify if requested.
+        /// Returns string with updated tags
+        /// </summary>
+        /// <param name="matcheditem"></param>
+        /// <param name="supplier_Tag"></param>
+        /// <returns>Tag string with update Shipping tag</returns>
+        public async Task<string> UpdateShippingTag(Shopify_Product matcheditem, string supplier_Tag, bool updateShopify)
         {
             string newtags;
 
@@ -1238,7 +1377,29 @@ namespace backoffice
             }
 
             newtags = String.Join(",", tags);
-            await shopify.UpdateTags(matcheditem.Id, String.Join(",", tags));
+
+            Dictionary<string, string> props = new Dictionary<string, string>();
+            props.Add("SKU", matcheditem.Variants.FirstOrDefault().Sku);
+            props.Add("Title", matcheditem.Title);
+            props.Add("OldTags", matcheditem.Tags);
+            props.Add("NewTags", newtags);
+
+            if (updateShopify)
+            {
+                bool UpdateTagsSuccess = await shopify.UpdateTags(matcheditem.Id, newtags);
+
+                if (UpdateTagsSuccess)
+                {
+                    LogEvent("UpdateShippingTag", props, null);
+                }
+                else
+                {
+                    LogEvent("UpdateShippingTag_Error", props, null);
+                }
+
+            }
+           
+            return newtags;
         }
 
         private static bool FindShippingTag(string s)
@@ -1259,14 +1420,35 @@ namespace backoffice
             LogStr(v1, false);
         }
 
-        private void LogStr(string v1, bool v2)
+        private void LogStr(string v1, bool v2, int thres = 0)
         {
-            OnNotify(new NotifyEventArgs { ConsoleOnly = v2, Message = v1, Threshold = 0 });
+            OnNotify(new NotifyEventArgs { ConsoleOnly = v2, Message = v1, Threshold = thres });
         }
 
         protected virtual void OnNotify(NotifyEventArgs e)
         {
             Notify?.Invoke(this, e);
+        }
+
+
+        private void LogEx(Exception ex, Dictionary<string,string> properties = null, Dictionary<string,double> metrics = null)
+        {
+            OnException(new NotifyExceptionEventArgs { NException = ex, Properties = properties, Metrics = metrics });
+        }
+
+        protected virtual void OnException(NotifyExceptionEventArgs e)
+        {
+            Exception?.Invoke(this, e);
+        }
+
+        private void LogEvent(string eventname, Dictionary<string, string> properties = null, Dictionary<string, double> metrics = null)
+        {
+            OnProductEvent(new NotifyProductEventArgs { EventName = eventname, Properties = properties, Metrics = metrics } );
+        }
+
+        protected virtual void OnProductEvent(NotifyProductEventArgs e)
+        {
+            ProductEvent?.Invoke(this, e);
         }
 
     }

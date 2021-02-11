@@ -499,8 +499,11 @@ namespace backoffice.ShopifyAPI
 
         public Shopify_Product MatchProductByMMT(string handle, string sku)
         {
+            bool checksku = true;
             if ((sku == null) || (sku == ""))
-                throw new Exception("Invalid SKU - '" + sku + "'");
+            {
+                checksku = false;
+            }
             
             Shopify_Product retval = null;
 
@@ -516,8 +519,9 @@ namespace backoffice.ShopifyAPI
                     break;
                 }
 
-                if (sku != "")
+                if ((sku != "") || (!checksku))
                 {
+                    
                     if ((prod.Variants.FirstOrDefault().Sku.ToLower() == sku))
                     {
                         retval = prod;
@@ -1290,13 +1294,21 @@ namespace backoffice.ShopifyAPI
             if (new_rrp == "") { new_rrp = "0"; }
             
             // do stuff with GST amounts.  currently this is easy.  With more data sources logic will need to change                       
+            //
+            // make everything shopify target - 11/2/21 - this code looks like a good idea.  I will turn off taxable on all products soon anyways
             if ((!new_cost_taxable) & (!shopify_taxable))
             {             
                 new_cost = common.AddGST(new_cost).ToString();
+                new_rrp = common.AddGST(new_rrp).ToString();
             }
 
-            // no need to do anything with shopify_taxable right now but cant hurt to include it for things later on down the track
-            // if (shopify_taxable)
+            if ((!new_cost_taxable) & (shopify_taxable))
+            {
+                new_cost = new_cost.ToString();
+                new_rrp = new_rrp.ToString();
+            }
+
+
 
             // margin code looks kinds of wrong, as it is not the same as shopify cals
             // but I suspect ratio of prices is all that is needed.  Seems to have been working.

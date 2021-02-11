@@ -6,6 +6,10 @@ using System.Threading.Tasks;
 using backoffice;
 using System.IO;
 using Microsoft.VisualBasic.FileIO;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.DataContracts;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 //using backoffice;
 
 namespace mstore_backoffice
@@ -55,6 +59,8 @@ namespace mstore_backoffice
         static string statusfile = "";
         static SupplierType supplier = SupplierType.MMT;
 
+        static TelemetryClient telemetryClient;
+
         static string args_help = @"Commandline args:
              /task:[updateETA|updatepricing|findunmatched|updateitemeta|updateclearance]
              /supplier:MMT|Techdata|Dickerdata|Wavelink
@@ -70,13 +76,48 @@ namespace mstore_backoffice
 
         static void Main(string[] args)
         {
+            // Create the DI container.
+            IServiceCollection services = new ServiceCollection();
+
+            // Being a regular console app, there is no appsettings.json or configuration providers enabled by default.
+            // Hence instrumentation key and any changes to default logging level must be specified here.
+            services.AddLogging(loggingBuilder => loggingBuilder.AddFilter<Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider>("Category", LogLevel.Information));
+            services.AddApplicationInsightsTelemetryWorkerService("690db61c-427b-41f1-ac56-3174368c99f5");
+
+            // Build ServiceProvider.
+            IServiceProvider serviceProvider = services.BuildServiceProvider();
+
+            // Obtain logger instance from DI.
+            ILogger<Program> logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+
+            // Obtain TelemetryClient instance from DI, for additional manual tracking or to flush.
+            telemetryClient = serviceProvider.GetRequiredService<TelemetryClient>();
+
+            logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
+
+            /*
+            telemetryClient.TrackEvent("mstore_backoffice started");
+
+            // Replace with a name which makes sense for this operation.
+            
+            using (telemetryClient.StartOperation<RequestTelemetry>("operation"))
+            {
+                logger.LogWarning("A sample warning message. By default, logs with severity Warning or higher is captured by Application Insights");
+                logger.LogInformation("Calling bing.com");
+                Task.Delay(100).Wait();
+                logger.LogInformation("Calling bing completed with status: 200");
+                telemetryClient.TrackEvent("Bing call event completed");
+            }
+            */
+
             string taskoption = "";
 
             mstore_stock_file = mstore_backoffice.Properties.Settings.Default.mstore_stock_file;
 
             MBot mbot = new MBot(mstore_stock_file);
             mbot.Notify += c_Notify;
-
+            mbot.Exception += c_LogEX;
+            mbot.ProductEvent += c_LogProductEvent;
 
             foreach (string arg in args)
             {
@@ -237,13 +278,25 @@ namespace mstore_backoffice
             {
                 logfile.Close();
             }
+
+            // Explicitly call Flush() followed by sleep is required in Console Apps.
+            // This is to ensure that even if application terminates, telemetry is sent to the back-end.
+            telemetryClient.Flush();
+            Task.Delay(5000).Wait();
         }
 
         private static void c_Notify(object sender, NotifyEventArgs e)
         {
             LogStr(e.Message, e.ConsoleOnly);
         }
-
+        private static void c_LogEX(object sender, NotifyExceptionEventArgs e)
+        {
+            telemetryClient.TrackException(e.NException, e.Properties, e.Metrics);
+        }
+        private static void c_LogProductEvent(object sender, NotifyProductEventArgs e)
+        {            
+            telemetryClient.TrackEvent(e.EventName, e.Properties, e.Metrics);
+        }
         public static void LogStr(string message, bool consoleonly = false)
         {
             Console.WriteLine(message);

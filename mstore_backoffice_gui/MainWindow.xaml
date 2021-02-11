@@ -7,57 +7,111 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="75"/>
-            <RowDefinition Height="100"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="30"/>
-        </Grid.RowDefinitions>
 
-        <StackPanel Orientation="Horizontal" Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Center">
-            <TextBox Name="SearchBox" Width="400"></TextBox>
-            <Button Click="Button_Click_4">Search</Button>
-            <Button Click="Button_Click_5" Margin="20,0,0,0">Update</Button>
-            <Button Margin="20,0,0,0" Click="Button_Click">NewMeta</Button>
-        </StackPanel>
+        <TabControl TabStripPlacement="Left">
+            <TabItem Header="Products">
+                <Grid Background="#FFE5E5E5">
+                    
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="100"></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Vertical">
+                    <DockPanel Grid.Row="0">
+                        <Menu DockPanel.Dock="Top">
+                            <MenuItem Header="_Shopify">
+                                <MenuItem Header="_Load Products" Click="MenuItemLoadProducts_Click" />
+                                <MenuItem Header="_Review Products" Click="MenuItemLoadProducts_Click" />
+                            </MenuItem>
+                            <MenuItem Header="_Products">
+                                <MenuItem Header="_Change ETA" Click="MenuItemLoadProducts_Click" />
+                                <MenuItem Header="_Change Price" Click="MenuItemLoadProducts_Click" />
+                                <MenuItem Header="_Review Product" Click="MenuItemLoadProducts_Click" />
+                            </MenuItem>
+                        </Menu>
+                        
+                    </DockPanel>
+                        <StackPanel Orientation="Vertical">
+                            <TextBlock>Filter</TextBlock>
+                            <TextBox Name="FilterText" Width="150" HorizontalAlignment="Left"></TextBox>
+                         </StackPanel>
+                    </StackPanel>
+                    
+                    <DataGrid Name="ProductGrid" Grid.Row="1">
+                        <DataGrid.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="_Load Products" Click="MenuItemLoadProducts_Click"/>
+                            </ContextMenu>
+                        </DataGrid.ContextMenu>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+            
+            
+            
+            
+            <TabItem Header="Old Panel">
 
-        <DataGrid Grid.Row="1" Name="Shopify_Grid" SelectionChanged="Shopify_Grid_SelectionChanged">
-        </DataGrid>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="75"/>
+                        <RowDefinition Height="100"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="30"/>
+                    </Grid.RowDefinitions>
 
-        <Border x:Name="border1" DataContext="{Binding prod_avail}" Grid.Row="2" >
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal" Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBox Name="SearchBox" Width="400"></TextBox>
+                        <Button Click="Button_Click_4">Search</Button>
+                        <Button Click="Button_Click_5" Margin="20,0,0,0">Update</Button>
+                        <Button Margin="20,0,0,0" Click="Button_Click">NewMeta</Button>
+                    </StackPanel>
 
-                <Label Grid.Column="0" Grid.Row="0" HorizontalContentAlignment="Right" Margin="5">Availability:</Label>
-                <TextBox Name="Availability_text" Text="{Binding Path=availability, Mode=TwoWay}" Grid.Column="1" Grid.Row="0" MinWidth="100"></TextBox>
+                    <DataGrid Grid.Row="1" Name="Shopify_Grid" SelectionChanged="Shopify_Grid_SelectionChanged">
+                    </DataGrid>
 
-                <Label Grid.Column="0" Grid.Row="1" HorizontalContentAlignment="Right" Margin="5">ETA:</Label>
-                <TextBox Name="ETA_text" Text="{Binding Path=eta, Mode=TwoWay}" Grid.Column="1"  Grid.Row="1"></TextBox>
+                    <Border x:Name="border1" DataContext="{Binding prod_avail}" Grid.Row="2" >
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-                <Label Grid.Column="0" Grid.Row="2" HorizontalContentAlignment="Right" Margin="5">Status:</Label>
-                <TextBox Name="status_text" Text="{Binding status}" Grid.Column="1"  Grid.Row="2"></TextBox>
-            </Grid>
-        </Border>
+                            <Label Grid.Column="0" Grid.Row="0" HorizontalContentAlignment="Right" Margin="5">Availability:</Label>
+                            <TextBox Name="Availability_text" Text="{Binding Path=availability, Mode=TwoWay}" Grid.Column="1" Grid.Row="0" MinWidth="100"></TextBox>
+
+                            <Label Grid.Column="0" Grid.Row="1" HorizontalContentAlignment="Right" Margin="5">ETA:</Label>
+                            <TextBox Name="ETA_text" Text="{Binding Path=eta, Mode=TwoWay}" Grid.Column="1"  Grid.Row="1"></TextBox>
+
+                            <Label Grid.Column="0" Grid.Row="2" HorizontalContentAlignment="Right" Margin="5">Status:</Label>
+                            <TextBox Name="status_text" Text="{Binding status}" Grid.Column="1"  Grid.Row="2"></TextBox>
+                        </Grid>
+                    </Border>
+
+                </Grid>
+
+            </TabItem>
+        </TabControl>
         <StatusBar Height="30" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Grid.Row="3">
             <StatusBarItem>
                 <Label Name="StatusBarLabel"></Label>
             </StatusBarItem>
             <StatusBarItem>
-                <ProgressBar Name="StatusBarProgress" ></ProgressBar>    
+                <ProgressBar Name="StatusBarProgress" ></ProgressBar>
             </StatusBarItem>
         </StatusBar>
+        
     </Grid>
+
+
 
     
 </Window>

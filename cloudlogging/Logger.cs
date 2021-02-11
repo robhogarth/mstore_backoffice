@@ -13,36 +13,50 @@ namespace cloudlogging
         ETA,
         Pricing,
         FindUnmatched,
+        Exception,
         Generic
+    }
+
+    public class LogMessage
+    {
+        [JsonProperty("Message")]
+        public string Message { get; set; }
+        [JsonProperty("lType")]
+        public LogType lType { get; set; }
     }
 
     public class Logger
     {
-        public async void LogMsg(string message, LogType lType = LogType.Generic)
+        public void LogMsg(string message, LogType lType = LogType.Generic)
         {
-
+            LogToAPI(lType, message);
         }
 
-        public async void LogException(Exception ex)
+        public void LogException(Exception ex)
         {
-
+            LogToAPI(LogType.Exception, ex.Message);
         }
 
-        public async void LogException(string message)
+        public void LogException(string message)
         {
-
+            LogToAPI(LogType.Exception, message);
         }
 
-        private async void LogToAPI(string query)
+        private async void LogToAPI(LogType logType, string message)
         {
             string uri = "";
+
+            LogMessage lMessage = new LogMessage()
+            {
+                Message = message,
+                lType = logType
+            };
+            string jsonData = JsonConvert.SerializeObject(lMessage);
             HttpClient lClient = new HttpClient();
-            HttpContent hcontent = new StringContent(query, Encoding.UTF8, "application/json");
-            lClient.PostAsync(uri, hcontent);
+            HttpContent hcontent = new StringContent(jsonData, Encoding.UTF8, "application/json");
+            await lClient.PostAsync(uri, hcontent);
 
             //lClient.PostAsync(Uri,
         }
-
-
     }
 }

@@ -308,7 +308,7 @@ namespace backoffice.ShopifyAPI
                 }
                 catch (Exception ex)
                 {
-                    throw new Exception("Error in post_product_data " + ex.Message);
+                    throw new Exception("Error in put_product_data " + ex.Message);
                 }
 
                 retval = response.StatusCode;
@@ -328,7 +328,7 @@ namespace backoffice.ShopifyAPI
                     else
                     {
                         postretry = false;
-                        throw new Exception("Unable to post_product_data. " + response.StatusCode.ToString() + " - " + await response.Content.ReadAsStringAsync());
+                        throw new Exception("Unable to put_product_data. " + response.StatusCode.ToString() + " - " + await response.Content.ReadAsStringAsync());
                     }
                 }
             }
