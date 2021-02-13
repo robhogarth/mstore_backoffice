@@ -131,6 +131,24 @@ namespace backoffice.ShopifyAPI
             return retval;
         }
 
+        public async Task<InventoryItem> GetInventoryItem(string InventoryItem)
+        {
+            string gl_uri = url_prefix + "/inventory_items/" + InventoryItem + ".json";
+
+            InventoryItemWrapper retval;
+
+            string content = await Get_Data(gl_uri);
+
+            retval = JsonConvert.DeserializeObject<InventoryItemWrapper>(content);
+
+            return retval.InventoryItem;
+        }
+
+        internal Task<bool> UpdateProductTitle(Shopify_Product shopify_Product)
+        {
+            throw new NotImplementedException();
+        }
+
         public async Task<bool> ConnectInventoryItemLocation(object inv_id, long location_id)
         {
             string uturi = url_prefix + "/inventory_levels/connect.json";
@@ -151,6 +169,16 @@ namespace backoffice.ShopifyAPI
             }
 
             return common.IsStatusCodeSuccess(await Post_Product_Data(uturi, sw.ToString()));
+        }
+
+        internal Task<bool> UpdateInventory(InventoryItem invItem)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal Task<bool> UpdateVariant(Variant variant)
+        {
+            throw new NotImplementedException();
         }
 
         public async Task<bool> Remove_InventoryItemLocation(object inv_id, long location_id)
@@ -223,11 +251,11 @@ namespace backoffice.ShopifyAPI
             return retval;
         }
 
-        public async Task<string> UpdateProductETAMetafields(string handle, string availability, string ETA, string status)
+        public async Task<bool> UpdateProductETAMetafields(string handle, string availability, string ETA, string status)
         {
             List<Metafield> mwrapper = new List<Metafield>();
             var tasks = new List<Task<string>>();
-            string retval = "";
+            bool retval = true;
 
             mwrapper.Add(new Metafield("mstore", "availability", availability, "string"));
 
@@ -248,47 +276,16 @@ namespace backoffice.ShopifyAPI
                 mwrap.metafield = meta;
                 string content = JsonConvert.SerializeObject(mwrap, Formatting.Indented);
 
-
-                /*
-                tasks.Add(Task.Run(async () => {
-                                                    HttpStatusCode result = await post_product_data(uri, hcontent);
-                                                    if (result != HttpStatusCode.Created)
-                                                    {
-                                                        Interlocked.Increment(ref failed);
-                                                    }
-                                                    return result.ToString();
-                                            }));
-
-            */
                 try
                 {
-
-
-                    retval += await Post_Product_Data(uri, content);
-                    //retval += "Debug Only";
+                    retval = retval & common.IsStatusCodeSuccess(await Post_Product_Data(uri, content));
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    retval += ex.Message;
+                    throw;
                 }
                 
             }
-            /*
-            var continuation = Task.WhenAll(tasks);
-            while (continuation.Status == TaskStatus.Running)
-            {
-                continuation.Wait();
-            }
-
-            if (continuation.Status == TaskStatus.RanToCompletion)
-                foreach (var result in continuation.Result)
-                {
-                    retval += result;
-                }
-            else
-            {
-                retval = failed.ToString() + " failures";
-            }*/
 
             return retval;
         }

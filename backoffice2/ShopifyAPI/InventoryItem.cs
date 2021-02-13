@@ -51,5 +51,12 @@ namespace backoffice.ShopifyAPI
         [JsonProperty("admin_graphql_api_id")]
         public string AdminGraphqlApiId { get; set; }
     }
+
+    public partial class InventoryItemWrapper
+    {
+        [JsonProperty("inventory_item")]
+        public InventoryItem InventoryItem { get; set; }
+    }
+
 }
 

@@ -700,6 +700,12 @@ namespace backoffice.ShopifyAPI
             return retval;
         }
 
+        /// <summary>
+        /// Updates Shopify Product online with new tags as supplied.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="tags"></param>
+        /// <returns></returns>
         public async Task<bool> UpdateTags(object id, string tags)
         {
             return await API.UpdateTags(id, tags);
@@ -873,29 +879,32 @@ namespace backoffice.ShopifyAPI
 
         }
 
-        public async Task<string> Update_Availability(Shopify_Product shop_prod, Product supplier_product)
+        public async Task<bool> Update_Availability(Shopify_Product shop_prod, Product supplier_product, bool AlwaysUpdate = false)
         {
+            bool retval;
+            bool api_return;
 
-            string retval;
-
-            if (!ETA_Tags_Match(shop_prod, supplier_product))
+            if ((!ETA_Tags_Match(shop_prod, supplier_product)) | AlwaysUpdate)
             {
-                retval = await API.UpdateProductETAMetafields(shop_prod.Id.ToString(), supplier_product.Available.ToString(), supplier_product.ETA.ToString(), supplier_product.Status);
+                api_return = await API.UpdateProductETAMetafields(shop_prod.Id.ToString(), supplier_product.Available.ToString(), supplier_product.ETA.ToString(), supplier_product.Status);
 
                 shop_prod.Tags = common.Updatembot(shop_prod.Tags);
                 shop_prod.Tags = common.ReplaceTag(shop_prod.Tags, supplier_product.Available.ToAvailableTag(), ETAExtensions.AvailableTagPrefix);
                 shop_prod.Tags = common.ReplaceTag(shop_prod.Tags, supplier_product.ETA.ToETATag(), ETAExtensions.ETATagPrefix);
                 shop_prod.Tags = common.ReplaceTag(shop_prod.Tags, supplier_product.Status.ToStatusTag(), ETAExtensions.StatusTagPrefix);
 
-                retval += (await API.UpdateTags(shop_prod.Id, shop_prod.Tags)).ToString();
+                if ((api_return) | AlwaysUpdate)
+                    _ = API.UpdateTags(shop_prod.Id, shop_prod.Tags);
+
+                retval = api_return;
             }
             else
             {
-                retval = "No Update Required";
                 _ = API.UpdateTags(shop_prod.Id, common.Updatembot(shop_prod.Tags));
-               
+                retval = false;
             }
 
+            // returns if product required update
             return retval;
         }
         

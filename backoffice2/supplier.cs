@@ -93,6 +93,28 @@ namespace backoffice
 
             return retval;
         }
+
+        /// <summary>
+        /// Returns a list of SupplierLocationIDs in a dictionary with Supplier Tags
+        /// <para>
+        /// This is initially for chekcing that products have correct Supplier Association
+        /// This could be a static list but dynamic lists are far more spiffy.</para>
+        /// </summary>
+        /// <returns>Dictionary of Supplier Tags and Location Ids</returns>
+        public static Dictionary<string, long> GetSupplierLocationIDs()
+        {
+            Dictionary<string, long> retval = new Dictionary<string, long>();
+
+            Supplier sup;
+            for (int i = 0; i < Enum.GetNames(typeof(SupplierType)).Length; i++)
+            {
+                sup = CreateSupplier((SupplierType)i);
+                retval.Add(sup.Supplier_Tag, sup.Supplier_Location_Id);
+            }
+
+            return retval;
+        }
+
     }
 
 
