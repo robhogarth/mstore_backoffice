@@ -70,6 +70,9 @@ namespace backoffice.ShopifyAPI
                     retval = retval | Title_Fault_Codes.Invalid_Chars;
             }
 
+            if (this.Last_Fault_Codes == null)
+                this.Last_Fault_Codes = new Product_Fault_Code_Details();
+
             this.Last_Fault_Codes.Title_Fault_Code = retval;
 
             return retval;
@@ -153,11 +156,13 @@ namespace backoffice.ShopifyAPI
 
         public async Task<bool> FixTitle(bool whatif = false)
         {
+            CreateAPI();
+
             bool retval = false;
             
             try
             {
-                this.Title = WebUtility.UrlDecode(this.Title);
+                this.Title = WebUtility.HtmlDecode(this.Title);
                 if (!whatif)
                     retval = await _api.UpdateProductTitle(this);
                 else

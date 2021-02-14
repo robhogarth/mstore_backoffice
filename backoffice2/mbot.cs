@@ -73,43 +73,43 @@ namespace backoffice
             string _tfile = @"d:\temp\0009043769.csv";
             string _dfile = @"c:\temp\datafeed.csv";
 
+            Supplier mmt = SupplierProducer.CreateSupplier(SupplierType.MMT);
+            await mmt.LoadProducts();
 
-            UpdatePricing().Wait();
-
-            
-            /*
-            LogStr("Loading Shopify Products", true);
             shopify = new Shopify();
-            
-            _ = await Download_Shopify();
-                
-             LogStr("Shopify load completed", true);
-             LogStr("Doing Test Code...", true);
-            
-            
 
-            foreach (Shopify_Product p in shopify.products) 
+            await Download_Shopify(null, false, true);
+
+            Console.WriteLine("Finished setup, finiding new products");
+
+            foreach(MMTProduct prod in mmt.Products)
             {
-                Product_Fault_Codes fcode = await p.Verify_Product();
-                Console.WriteLine(p.Id + " - " + p.Title + " - " + fcode.ToString());
-            };
+                if (prod.SKU != null)
+                {
+                    var sprod = shopify.MatchProductByMMT(prod.SKU, prod.SKU);
+                    if (sprod == null)
+                    {
+                        if ((prod.Title.Length > 0))
+                        {
+                            Console.WriteLine(prod.SKU + " - " + prod.Title + ": Adding to store");
+                            try
+                            {
+                                await shopify.AddNewProduct(prod, mmt, prod.Images);
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine(ex.Message);
+                            }
+                        }
+                    }
+                }
+            }
 
-            */
-
-            
-
-
-
-
-            //await FixHiddenProds(SupplierType.MMT);
-            //await FixHiddenProds(SupplierType.TechData, _tfile);
-            //await FixHiddenProds(SupplierType.DickerData, _dfile);
-
-            //UpdatePricing(SupplierType.MMT).Wait();
+            Console.WriteLine("Finished mbot.Test()");
+            Console.ReadKey();
 
             return 0;
         }
-
 
         public async Task<bool> Process_DataFile(SupplierType stype, string filename, bool extractFile = true)
         {
@@ -495,7 +495,6 @@ namespace backoffice
 
             return wrkstr;
         }
-
 
         /// <summary>
         /// FindUnmatched Items that are no longer published by vendor

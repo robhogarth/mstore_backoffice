@@ -144,9 +144,29 @@ namespace backoffice.ShopifyAPI
             return retval.InventoryItem;
         }
 
-        internal Task<bool> UpdateProductTitle(Shopify_Product shopify_Product)
+        public async Task<bool> UpdateProductTitle(Shopify_Product product)
         {
-            throw new NotImplementedException();
+            string uturi = url_prefix + "/products/" + product.Id.ToString() + ".json";
+
+            StringBuilder sb = new StringBuilder();
+            StringWriter sw = new StringWriter(sb);
+
+            using (JsonWriter writer = new JsonTextWriter(sw))
+            {
+                writer.Formatting = Formatting.Indented;
+
+                writer.WriteStartObject();
+                writer.WritePropertyName("product");
+                writer.WriteStartObject();
+                writer.WritePropertyName("id");
+                writer.WriteValue(product.Id.ToString());
+                writer.WritePropertyName("title");
+                writer.WriteValue(product.Title);
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+            }
+
+            return common.IsStatusCodeSuccess(await Put_Product_Data(uturi, sw.ToString()));
         }
 
         public async Task<bool> ConnectInventoryItemLocation(object inv_id, long location_id)
@@ -171,14 +191,77 @@ namespace backoffice.ShopifyAPI
             return common.IsStatusCodeSuccess(await Post_Product_Data(uturi, sw.ToString()));
         }
 
-        internal Task<bool> UpdateInventory(InventoryItem invItem)
+        public async Task<bool> UpdateInventory(InventoryItem invItem)
         {
-            throw new NotImplementedException();
+            string uturi = url_prefix + "/inventory_items/" + invItem.Id.ToString() + ".json";
+
+            StringBuilder sb = new StringBuilder();
+            StringWriter sw = new StringWriter(sb);
+
+            using (JsonWriter writer = new JsonTextWriter(sw))
+            {
+                writer.Formatting = Formatting.Indented;
+                
+                writer.WriteStartObject();
+                writer.WritePropertyName("inventory_item");
+                writer.WriteStartObject();
+                writer.WritePropertyName("id");
+                writer.WriteValue(invItem.Id.ToString());
+                writer.WritePropertyName("cost");
+                writer.WriteValue(invItem.Cost);
+                writer.WritePropertyName("sku");
+                writer.WriteValue(invItem.Sku);
+                writer.WritePropertyName("tracked");
+                writer.WriteValue(invItem.Tracked.ToString());
+                writer.WritePropertyName("requires_shipping");
+                writer.WriteValue(invItem.RequiresShipping.ToString());
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+            }
+
+            return common.IsStatusCodeSuccess(await Put_Product_Data(uturi, sw.ToString()));
         }
 
-        internal Task<bool> UpdateVariant(Variant variant)
+        public async Task<bool> UpdateVariant(Variant variant)
         {
-            throw new NotImplementedException();
+            string uturi = url_prefix + "/variants/" + variant.Id + ".json";
+
+            StringBuilder sb = new StringBuilder();
+            StringWriter sw = new StringWriter(sb);
+
+            using (JsonWriter writer = new JsonTextWriter(sw))
+            {
+                writer.Formatting = Formatting.Indented;
+
+                writer.WriteStartObject();
+                writer.WritePropertyName("variant");
+                writer.WriteStartObject();
+                writer.WritePropertyName("id");
+                writer.WriteValue(variant.Id);
+                writer.WritePropertyName("barcode");
+                writer.WriteValue(variant.Barcode);
+                writer.WritePropertyName("compare_at_price");
+                writer.WriteValue(variant.CompareAtPrice);
+                //writer.WritePropertyName("fulfillment_service");
+                //writer.WriteValue(variant.FulfillmentService);
+                writer.WritePropertyName("grams");
+                writer.WriteValue(variant.Grams);
+                //writer.WritePropertyName("inventory_management");
+                //writer.WriteValue(variant.InventoryManagement);
+                //writer.WritePropertyName("inventory_policy");
+                //writer.WriteValue(variant.InventoryPolicy);
+                writer.WritePropertyName("price");
+                writer.WriteValue(variant.Price);
+                writer.WritePropertyName("sku");
+                writer.WriteValue(variant.Sku);
+                writer.WritePropertyName("taxable");
+                writer.WriteValue(variant.Taxable);
+
+                writer.WriteEndObject();
+                writer.WriteEndObject();
+            }
+
+            return common.IsStatusCodeSuccess(await Put_Product_Data(uturi, sw.ToString()));
         }
 
         public async Task<bool> Remove_InventoryItemLocation(object inv_id, long location_id)
@@ -278,13 +361,56 @@ namespace backoffice.ShopifyAPI
 
                 try
                 {
-                    retval = retval & common.IsStatusCodeSuccess(await Post_Product_Data(uri, content));
+                    retval = retval & common.IsStatusCodeSuccess(await Post_Product_Metafield_Data(uri, content));
                 }
                 catch (Exception e)
                 {
                     throw;
                 }
                 
+            }
+
+            return retval;
+        }
+
+        public async Task<HttpStatusCode> Post_Product_Metafield_Data(string uri, string content)
+        {
+            bool postretry = true;
+            HttpResponseMessage response;
+            HttpStatusCode retval = HttpStatusCode.Unused;
+
+            while (postretry)
+            {
+                try
+                {
+                    HttpContent hcontent = new StringContent(content, Encoding.UTF8, "application/json");
+                    response = await Post_Data(uri, hcontent);
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception("Error in post_product_data " + ex.Message);
+                }
+
+                retval = response.StatusCode;
+                if (response.StatusCode == HttpStatusCode.Created)
+                {
+                    postretry = false;
+
+                    await check_ratelimit(response.Headers);
+                }
+                else
+                {
+
+                    if (response.ReasonPhrase == "Too Many Requests")
+                    {
+                        await Task.Delay(ratelimit);
+                    }
+                    else
+                    {
+                        postretry = false;
+                        throw new Exception("Unable to post_product_data. " + response.StatusCode.ToString() + " - " + await response.Content.ReadAsStringAsync());
+                    }
+                }
             }
 
             return retval;
@@ -333,12 +459,56 @@ namespace backoffice.ShopifyAPI
             return retval;
         }
 
+        public async Task<string> Post_New_Product_Data(string uri, string content)
+        {
+            bool postretry = true;
+            HttpResponseMessage response;
+            string retval = "";
+            
+            while (postretry)
+            {
+                try
+                {
+                    HttpContent hcontent = new StringContent(content, Encoding.UTF8, "application/json");
+                    response = await Post_Data(uri, hcontent);
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception("Error in post_product_data " + ex.Message);
+                }
+
+                retval = await response.Content.ReadAsStringAsync();
+                if (response.StatusCode == HttpStatusCode.Created)
+                {
+                    postretry = false;
+
+                    await check_ratelimit(response.Headers);
+                }
+                else
+                {
+
+                    if (response.ReasonPhrase == "Too Many Requests")
+                    {
+                        await Task.Delay(ratelimit);
+                    }
+                    else
+                    {
+                        postretry = false;
+                        throw new Exception("Unable to post_product_data. " + response.StatusCode.ToString() + " - " + await response.Content.ReadAsStringAsync());
+                    }
+                }
+            }
+
+            return retval;
+        }
+
+
         public async Task<HttpStatusCode> Post_Product_Data(string uri, string content)
         {
             bool postretry = true;
             HttpResponseMessage response;
             HttpStatusCode retval = HttpStatusCode.Unused;
-            
+
             while (postretry)
             {
                 try
@@ -375,7 +545,6 @@ namespace backoffice.ShopifyAPI
 
             return retval;
         }
-
 
         private async Task<HttpResponseMessage> Put_Data(string uri, HttpContent hcontent)
         {

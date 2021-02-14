@@ -121,6 +121,8 @@ namespace backoffice.ShopifyAPI
             // if there's one make sure shipping tag matches invlocationid.
 
             // if there are none then add one matched to shipping tag
+            CreateAPI();
+
 
             bool retval = false;
             InventoryLevels iLevels = await _api.GetInventoryLevels(this.InventoryItemId.ToString());
@@ -166,8 +168,11 @@ namespace backoffice.ShopifyAPI
             return retval;
         }
 
-        public async Task<bool> MakeProductUntaxable(bool whatif)
+        public async Task<bool> MakeProductUntaxable(bool whatif = false)
         {
+            CreateAPI();
+
+
             //if taxable then modify all prices to include GST
             bool retval = false;
 

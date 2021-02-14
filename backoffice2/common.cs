@@ -122,7 +122,7 @@ namespace backoffice
 
         private static bool Findmbotstring(string s)
         {
-            if (s.ToLower().Contains("mbot"))
+            if (s.Contains("Mbot"))
             {
                 return true;
             }

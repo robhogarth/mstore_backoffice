@@ -17,123 +17,12 @@ using System.ComponentModel;
 using Microsoft.Win32.SafeHandles;
 using System.Security.Cryptography;
 using System.CodeDom.Compiler;
+using System.Globalization;
+using System.Threading;
 
 namespace backoffice.ShopifyAPI
 {
-    /*
-    public class Variant
-    {
-        public long id { get; set; }
-        public object product_id { get; set; }
-        public string title { get; set; }
-        public string price { get; set; }
-        public string sku { get; set; }
-        public int position { get; set; }
-        public string inventory_policy { get; set; }
-        public string compare_at_price { get; set; }
-        public string fulfillment_service { get; set; }
-        public object inventory_management { get; set; }
-        public string option1 { get; set; }
-        public object option2 { get; set; }
-        public object option3 { get; set; }
-        public DateTime created_at { get; set; }
-        public DateTime updated_at { get; set; }
-        public bool taxable { get; set; }
-        public string barcode { get; set; }
-        public int grams { get; set; }
-        public object image_id { get; set; }
-        public double weight { get; set; }
-        public string weight_unit { get; set; }
-        public object inventory_item_id { get; set; }
-        public int inventory_quantity { get; set; }
-        public int old_inventory_quantity { get; set; }
-        public bool requires_shipping { get; set; }
-        public string admin_graphql_api_id { get; set; }
-    }
-    public class Image
-    {
-        public object id { get; set; }
-        public Int64 product_id { get; set; }
-        public string created_at { get; set; }
-        public string updated_at { get; set; }
-        public int width { get; set; }
-        public int height { get; set; }
-        public string src { get; set; }
-    }
-    public class Shopify_Product: INotifyPropertyChanged
-    {
-        private object _id;
-        public object id {
-            get { return _id; }
-            set 
-            {
-                if(_id != value)
-                {
-                    _id = value;
-                    NotifyPropertyChanged("id");
-                }
-            } 
-        
-        }
-        public string handle { get; set; }
-        public string title { get; set; }
-        public string vendor { get; set; }
-        public string published_scope { get; set; }
-        public string tags { get; set; }
-        public IList<Image> images { get; set; }
-        public IList<Variant> variants { get; set; }
 
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        public void NotifyPropertyChanged(string propName)
-        {
-            this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propName));
-        }
-    }
-    public partial class InventoryItem
-    {
-        [JsonProperty("inventory_items")]
-        public InventoryItemElement[] InventoryItems { get; set; }
-    }
-    public partial class InventoryLevels
-    {
-        [JsonProperty("inventory_levels")]
-        public List<InventoryLevel> Levels { get; set; }
-    }
-    public partial class InventoryLevel
-    {
-        [JsonProperty("inventory_item_id")]
-        public long InventoryItemId { get; set; }
-
-        [JsonProperty("location_id")]
-        public long LocationId { get; set; }
-
-        [JsonProperty("available")]
-        public object Available { get; set; }
-
-        [JsonProperty("updated_at")]
-        public DateTimeOffset UpdatedAt { get; set; }
-
-        [JsonProperty("admin_graphql_api_id")]
-        public string AdminGraphqlApiId { get; set; }
-    }
-    public partial class InventoryItemElement
-    {
-        public long Id { get; set; }
-        public string Sku { get; set; }
-        public DateTimeOffset CreatedAt { get; set; }
-        public DateTimeOffset UpdatedAt { get; set; }
-        public bool RequiresShipping { get; set; }
-        public string Cost { get; set; }
-        public object CountryCodeOfOrigin { get; set; }
-        public object ProvinceCodeOfOrigin { get; set; }
-        public object HarmonizedSystemCode { get; set; }
-        public bool Tracked { get; set; }
-        public object[] CountryHarmonizedSystemCodes { get; set; }
-        public string AdminGraphqlApiId { get; set; }
-    }
-
-    */
     public class Availability : INotifyPropertyChanged
     {
         private HttpClient client;
@@ -402,9 +291,42 @@ namespace backoffice.ShopifyAPI
             return handle;
         }
 
-        public async Task<bool> AddMMTProduct(Product newprod)
+        public async Task<bool> AddNewProduct(MMTProduct new_prod, Supplier prod_supplier, List<string> Images = null)
         {
+            // to add a new shopify product
+            //
+            // First we add a shopify product
+            // include:
+            //      title
+            //      Description
+            //      Vendor
+            //      Product type
+            //      Setup tags
+            //      
+            // retrieve product id from post and use it to retrive variant
+            //
+            // setup variant
+            //      non taxable
+            //      sku
+            //      barcode if available
+            //      weight
+            //      weight options
+            //      inventory management options
+            //
+            // retrieve inventory to 
+            //   set cost
+            //   set inventory item location
+
+
+            // TODO: New Product - images
+            // TODO: New Product - Product Categories
+            // TODO: New Product - weight
+            // TODO: New Product - barcode
+
             string add_prod_uri = @"https://monpearte-it-solutions.myshopify.com/admin/api/2020-04/products.json";
+
+            CultureInfo cultureInfo = Thread.CurrentThread.CurrentCulture;
+            TextInfo textinfo = cultureInfo.TextInfo;
 
             StringBuilder sb = new StringBuilder();
             StringWriter sw = new StringWriter(sb);
@@ -417,84 +339,102 @@ namespace backoffice.ShopifyAPI
                 writer.WritePropertyName("product");
                 writer.WriteStartObject();
                 writer.WritePropertyName("handle");
-                writer.WriteValue(newprod.SKU);
+                writer.WriteValue(new_prod.SKU);
                 writer.WritePropertyName("title");
-                writer.WriteValue(newprod.Title);
+                writer.WriteValue(new_prod.Title);
                 writer.WritePropertyName("body_html");
-                writer.WriteValue(newprod.Title);
-                //writer.WritePropertyName("product_type");
-                //writer.WriteValue(newprod);
+                writer.WriteValue(new_prod.Description);
+                writer.WritePropertyName("product_type");
+                writer.WriteValue(new_prod.Category);
+                writer.WritePropertyName("published_scope");
+                writer.WriteValue("global");
                 writer.WritePropertyName("published");
-                writer.WriteValue("false");
-                writer.WritePropertyName("tags");
-                writer.WriteValue(CreateTags(newprod));
+                writer.WriteValue("true");
                 writer.WritePropertyName("vendor");
-                writer.WriteValue(newprod.Vendor);
+                writer.WriteValue(new_prod.Vendor.ToTitleCase());
+                
+                if (Images != null)
+                {
+                    writer.WritePropertyName("images");
+                    writer.WriteStartArray();
+
+                    foreach (string image in Images)
+                    {
+                        writer.WriteStartObject();
+                        writer.WritePropertyName("src");
+                        writer.WriteValue(image);
+                        writer.WriteEndObject();
+                    }
+
+                    writer.WriteEndArray();
+                }
+
                 writer.WriteEndObject();
                 writer.WriteEndObject();
             }
 
+            string prod_retval = await API.Post_New_Product_Data(add_prod_uri, sw.ToString());
+            
+            Shopify_Product_Wrapper base_product_wrapper = JsonConvert.DeserializeObject<Shopify_Product_Wrapper>(prod_retval);
+            Shopify_Product base_product = base_product_wrapper.Product;
 
-            //create main product fields
-            var newshopprod = new
+            base_product.Tags = CreateTags(new_prod, prod_supplier);
+            //await API.UpdateTags(base_product.Id, base_product.Tags);
+
+            await Update_Availability(base_product, new_prod, true);
+
+            if (base_product != null)
             {
-                handle = newprod.SKU,
-                title = newprod.Title,
-                body_html = newprod.Title,
-                product_ytpe = newprod.Title,
-                published_scope = "web",
-                tags = CreateTags(newprod),
-                vendor = newprod.Vendor
-            };
-                      
-            HttpContent prod_content = new StringContent(JsonConvert.SerializeObject(newshopprod), Encoding.UTF8, "application/json");
+                Variant new_var = base_product.Variants[0];
 
-            HttpStatusCode add_prod_response;
-            /*
-           add_prod_response = await API.Post_Product_Data(add_prod_uri, JsonConvert.SerializeObject(newshopprod));
+                new_var.Taxable = false;
+                new_var.Sku = new_prod.SKU;
+                new_var.RequiresShipping = true;
+                new_var.CompareAtPrice = new_prod.RRPPrice.ToString();
+                new_var.Price = (Math.Round(Convert.ToDouble(new_prod.CostPrice) * 1.12,2)).ToString();
 
-           if (common.IsStatusCodeSuccess(add_prod_response))
-           {
+                new_var.Grams = new_prod.Weight;
+                new_var.Barcode = new_prod.Barcode;
 
-              // string prod_response = await add_prod_response.Content.ReadAsStringAsync();
+                bool var_update_retval = await API.UpdateVariant(new_var);
 
-               string new_prod_id = prod_response.Substring(prod_response.IndexOf("id") + 5);
-               new_prod_id = new_prod_id.Substring(0, new_prod_id.IndexOf(","));
+                if (var_update_retval)
+                {
+                    InventoryItem inv_item = await API.GetInventoryItem(new_var.InventoryItemId.ToString());
 
-               string prodprice = "0";
+                    inv_item.Cost = new_prod.CostPrice.ToString();
 
+                    await API.UpdateInventory(inv_item);
 
+                    await API.ConnectInventoryItemLocation(inv_item.Id, prod_supplier.Supplier_Location_Id);
+                    await API.Remove_InventoryItemLocation(inv_item.Id, 45786103945);                             //Remove detault warehouse Mstore - Sydney
+                }
+            }
 
-               string variant_id = prod_response.Substring(prod_response.IndexOf("variants"));
-
-               variant_id = variant_id.Substring(prod_response.IndexOf("id") + 5);
-               variant_id = variant_id.Substring(0, new_prod_id.IndexOf(","));
-
-               //update variant
-               //sku, taxable, price, 
-               var newshopvariant = new
-               {
-                   title = "Title",
-                   taxable = "false",
-                   price = prodprice,
-                   sku = newprod.Manufacturer[0].ManufacturerCode
-               };
-
-               //create inventoryitem
-               var newshopinvitem = new
-               {
-                   cost = newprod.Pricing[0].YourPrice,
-                   sku = newprod.Manufacturer[0].ManufacturerCode,
-                   requires_shipping = "true",
-               };
-           }
-           */
             return true;
         }
 
-        private object CreateTags(Product newprod)
+        private string CreateTags(Product newprod, Supplier sup)
         {
-            throw new NotImplementedException();
+            List<string> tags = new List<string>();
+
+            // set:
+            //      vendor
+            tags.Add("Vendor_" + newprod.Vendor.ToTitleCase());
+
+            //      Product Types
+            //tags.Add(newprod.ProductCategory);
+
+            //      Shipping
+            tags.Add(sup.Supplier_Tag);
+
+            //      mbot available
+            tags.Add(newprod.Available.ToAvailableTag());
+            tags.Add(newprod.ETA.ToETATag());
+            tags.Add(newprod.Status.ToStatusTag());
+            tags.Add(common.Updatembot(""));
+
+            return String.Join(", ", tags.ToArray());
         }
 
         public Shopify_Product MatchProductByMMT(string handle, string sku)
@@ -894,13 +834,13 @@ namespace backoffice.ShopifyAPI
                 shop_prod.Tags = common.ReplaceTag(shop_prod.Tags, supplier_product.Status.ToStatusTag(), ETAExtensions.StatusTagPrefix);
 
                 if ((api_return) | AlwaysUpdate)
-                    _ = API.UpdateTags(shop_prod.Id, shop_prod.Tags);
+                    _ = await API.UpdateTags(shop_prod.Id, shop_prod.Tags);
 
                 retval = api_return;
             }
             else
             {
-                _ = API.UpdateTags(shop_prod.Id, common.Updatembot(shop_prod.Tags));
+                _ = await API.UpdateTags(shop_prod.Id, common.Updatembot(shop_prod.Tags));
                 retval = false;
             }
 

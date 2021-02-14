@@ -13,6 +13,21 @@ namespace backoffice
 
     }
 
+    public interface IHasDescription
+    {
+        string Description { get; }
+    }
+
+    public interface IHasCategories
+    {
+        string Category { get; }
+    }
+
+    public interface IHasImages
+    {
+        List<string> Images { get; }
+    }
+
     public enum Suppliers
     {
         MMT,
@@ -48,7 +63,13 @@ namespace backoffice
         {
             return StatusTagPrefix + status;
         }
+
+        public static string ToTitleCase(this string working)
+        {
+            return working.Substring(0, 1).ToUpper() + working.Substring(1).ToLower();
+        }
     }
+       
 
 
     abstract public class Product: IProduct
@@ -69,50 +90,59 @@ namespace backoffice
         }
     }
 
-    public class MMTProduct: Product
+    public class MMTProduct: Product, IHasDescription, IHasImages, IHasCategories
     {
-        private MMTPriceListProductsProduct mmtproduct;
+        private MMTXMLProduct mmtproduct;
+        private List<string> _images;
 
         public override string Title
         {
             get
             {
-                return this.mmtproduct.Description[0].ShortDescription;
+                return this.mmtproduct.Description.ShortDescription;
+                //return this.mmtproduct.Description[0].ShortDescription;
             }
         }
         public string Description
         {
             get
             {
-                return this.mmtproduct.Description[0].LongDescription;
+                if (this.mmtproduct.Description.DotPoints == null)
+                    return this.mmtproduct.Description.LongDescription;
+                else
+                    return this.mmtproduct.Description.LongDescription + "<ul><li>" + string.Join("</li><li>", this.mmtproduct.Description.DotPoints.Point.ToArray()) + "</ul>";
+
+                //return this.mmtproduct.Description[0].LongDescription;
             }
         }
         public override double CostPrice
         {
             get
             {
-                return Math.Round(Convert.ToDouble(this.mmtproduct.Pricing[0].YourPrice)*1.1,2);
+                return Math.Round(Convert.ToDouble(this.mmtproduct.Pricing.YourPrice) * 1.1, 2);
+                //return Math.Round(Convert.ToDouble(this.mmtproduct.Pricing[0].YourPrice)*1.1,2);
             }
         }
         public override double RRPPrice
         {
             get
             {
-                return Convert.ToDouble(this.mmtproduct.Pricing[0].RRPInc);
+                return Convert.ToDouble(this.mmtproduct.Pricing.RRPInc);
+                //return Convert.ToDouble(this.mmtproduct.Pricing[0].RRPInc);
             }
         }
         public override string Vendor
         {
             get
             {
-                return this.mmtproduct.Manufacturer[0].ManufacturerName;
+                return this.mmtproduct.Manufacturer.ManufacturerName;
             }
         }
         public override string SKU
         {
             get
             {
-                return this.mmtproduct.Manufacturer[0].ManufacturerCode;
+                return this.mmtproduct.Manufacturer.ManufacturerCode;
             }
         }
         public override int Available
@@ -133,13 +163,56 @@ namespace backoffice
         {
             get
             {
-                return this.mmtproduct.Status[0].StatusName;
+                return this.mmtproduct.Status.StatusName;
             }
         }
 
-        public void LoadMMTProduct(MMTPriceListProductsProduct mmtprod)
+        public string Category
+        {
+            get
+            {
+                return this.mmtproduct.Category.CategoryName;
+            }
+        }
+
+        public List<string> Images
+        {
+            get
+            {
+                return _images;
+            }
+        }
+
+        public string Barcode
+        {
+            get
+            {
+                return this.mmtproduct.Barcode;
+            }
+        }
+
+        public long Weight
+        {
+            get
+            {
+                return Convert.ToInt64(Convert.ToDouble(this.mmtproduct.Weight) * 1000);      //MMT returns wieght in KGs.  Shopify likes weight in grams
+            }
+        }
+
+        public void LoadMMTProduct(MMTXMLProduct mmtprod)
         {
             this.mmtproduct = mmtprod;
+
+            if (mmtproduct.Files != null)
+            {
+                _images = new List<string>();
+                foreach (string image in mmtproduct.Files.LargeImageURL)
+                {
+                    _images.Add(image);
+                }
+            }
+
+
         }
 
         public MMTProduct()
@@ -147,7 +220,7 @@ namespace backoffice
 
         }
 
-        public MMTProduct(MMTPriceListProductsProduct mmtprod)
+        public MMTProduct(MMTXMLProduct mmtprod)
         {
             LoadMMTProduct(mmtprod);
         }
