@@ -1,0 +1,3 @@
+[submodule "mShop"]
+	path = mShop
+	url = https://github.com/robhogarth/mShop.git
