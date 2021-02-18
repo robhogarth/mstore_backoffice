@@ -545,27 +545,10 @@ namespace backoffice.ShopifyAPI
 
             string geturi;
 
-            if (images)
-            {
-                geturi = uri_images;
-            }
-            else
-            {
-                geturi = uri;
-            }
-
-            if (basic)
-            {
-                geturi = uri_basic;
-            }
-            else
-            {
-                geturi = uri;
-            }
-
-            if (include_unpublished)
-                geturi = uri_all;
-
+            //TODO: Choices can be overriden by others here, which is not great
+            geturi = images ? uri_images : uri;
+            geturi = basic ? uri_basic: geturi;
+            geturi = include_unpublished ? uri_all : geturi;
 
             if (extraquerystrings != null)
             {
@@ -605,14 +588,10 @@ namespace backoffice.ShopifyAPI
                     {
                         _ = await check_ratelimit(response.Headers);
                     }
-                    
-
                  }
 
                 response_string = await response.Content.ReadAsStringAsync();
-
                 result = JsonConvert.DeserializeObject<Shopify_Products>(response_string);
-                
 
                 foreach (Shopify_Product prod in result.Products)
                 {

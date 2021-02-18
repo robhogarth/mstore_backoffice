@@ -12,7 +12,8 @@ namespace backoffice
     public enum MMTDownloadType : int
     {
         Standard = 0,
-        Clearance = 1
+        Clearance = 1,
+        Full = 2
     }
 
     public enum SupplierType : int
@@ -123,14 +124,21 @@ namespace backoffice
 
         public string mmtnewdatafeed = "https://www.mmt.com.au/datafeed/index.php?lt=s&ft=xml&tk=94M0C1O223NF7AI59BS94903AC004E0B4A%20D09%2083A%2046B%20D80%20648%2031F%2075D%20665F9461C558F25AE&af[]=dp&af[]=wt&af[]=st&af[]=et&af[]=bc&af[]=ai&af[]=um&af[]=si&af[]=li";
 
-        public string[] mmtdatafeed = { "https://www.mmt.com.au/datafeed/index.php?lt=s&ft=xml&tk=94M0C1O223NF7AI59BS94903AC004E0B4A%20D09%2083A%2046B%20D80%20648%2031F%2075D%20665F9461C558F25AE&af[]=et&af[]=st", "https://www.mmt.com.au/datafeed/index.php?lt=c&ft=xml&tk=94M0C1O223NF7AI59BS94903AC004E0B4A%20D09%2083A%2046B%20D80%20648%2031F%2075D%20665F9461C558F25AE&af[]=et&af[]=st" };
+        public string[] mmtdatafeed = { "https://www.mmt.com.au/datafeed/index.php?lt=s&ft=xml&tk=94M0C1O223NF7AI59BS94903AC004E0B4A%20D09%2083A%2046B%20D80%20648%2031F%2075D%20665F9461C558F25AE&af[]=et&af[]=st", "https://www.mmt.com.au/datafeed/index.php?lt=c&ft=xml&tk=94M0C1O223NF7AI59BS94903AC004E0B4A%20D09%2083A%2046B%20D80%20648%2031F%2075D%20665F9461C558F25AE&af[]=et&af[]=st", "https://www.mmt.com.au/datafeed/index.php?lt=s&ft=xml&tk=94M0C1O223NF7AI59BS94903AC004E0B4A%20D09%2083A%2046B%20D80%20648%2031F%2075D%20665F9461C558F25AE&af[]=dp&af[]=wt&af[]=st&af[]=et&af[]=bc&af[]=ai&af[]=um&af[]=si&af[]=li" };
         public MMTDownloadType DownloadType = MMTDownloadType.Standard;
         public override long Supplier_Location_Id { get { return 41088974985; } }
         public override string Supplier_Tag { get {return "MMTShipping"; } }
         public override string CollectionID { get { return "235730206870"; } }
         public override bool MatchVariants { get { return false; } }
         public override bool MultiSourceProducts { get { return true; } }
+        public bool ImagesLoaded { get; set; }
+
         public override async Task<int> LoadProducts()
+        {
+            return await LoadProductsExtra(MMTDownloadType.Standard);
+        }
+
+        public async Task<int> LoadProductsExtra(MMTDownloadType DownloadType)
         {
             await Task.Run(() => { Thread.Sleep(100); });
 
@@ -139,22 +147,23 @@ namespace backoffice
             else
                 this.Products.Clear();
 
-
             //LogStr("Processing MMT Download", true);
 
-            //pricelist = await MMTXMLPriceList.loadFromURLAsync(mmtdatafeed[(int)DownloadType]);
-            pricelist = await MMTXMLPriceList.loadFromURLAsync(mmtnewdatafeed);
+            pricelist = await MMTXMLPriceList.loadFromURLAsync(mmtdatafeed[(int)DownloadType]);
 
             if (pricelist != null)
             {
+                if (DownloadType == MMTDownloadType.Full)
+                    this.ImagesLoaded = true;
+
                 //LogStr("Successful download", true);
                 //LogStr("Downloaded MMT " + ((MMTPriceListProducts)pricelist.Items[1]).Product.Count() + " items retreived.", true);
             }
             else
             {
-                //LogStr("Error in download as csv");
+                throw new Exception("Error downloading PriceList from MMT");
             }
-                                   
+
             foreach (MMTXMLProduct mmtprod in pricelist.Products.Product)
             {
                 Products.Add(new MMTProduct(mmtprod));
@@ -162,6 +171,8 @@ namespace backoffice
 
             return this.Products.Count();
         }
+
+
     }
 
     public class TechDataSupplier: FileSupplier

@@ -78,23 +78,32 @@ namespace backoffice
 
             shopify = new Shopify();
 
+            await Get_Duplicates();
+
+            /*
+             * 
+             * 
             await Download_Shopify(null, false, true);
 
+            Console.WriteLine("Downloaded " + shopify.products.Count() + " Shopify products");
+
             Console.WriteLine("Finished setup, finiding new products");
+
 
             foreach(MMTProduct prod in mmt.Products)
             {
                 if (prod.SKU != null)
                 {
                     var sprod = shopify.MatchProductByMMT(prod.SKU, prod.SKU);
+                    //Console.WriteLine(prod.SKU + ":" + prod.Title + ": Adding to store");
                     if (sprod == null)
                     {
                         if ((prod.Title.Length > 0))
                         {
-                            Console.WriteLine(prod.SKU + " - " + prod.Title + ": Adding to store");
-                            try
+                            Console.WriteLine(prod.SKU + ":" + prod.Title + ": Adding to store");
+                            /*try
                             {
-                                await shopify.AddNewProduct(prod, mmt, prod.Images);
+                                //await shopify.AddNewProduct(prod, mmt, prod.Images);
                             }
                             catch (Exception ex)
                             {
@@ -105,11 +114,53 @@ namespace backoffice
                 }
             }
 
+*/
             Console.WriteLine("Finished mbot.Test()");
             Console.ReadKey();
 
             return 0;
         }
+
+        public async Task<bool> Get_Duplicates()
+        {
+            await Download_Shopify(null, false, true);
+
+            Console.WriteLine("Finding Duplicates");
+
+            foreach (Shopify_Product prod in shopify.products)
+            {
+                try
+                {
+                    if (prod.Variants[0].Sku != "")
+                    {
+                        IEnumerable<Shopify_Product> result = shopify.products.Where(m => m.Variants[0].Sku == prod.Variants[0].Sku).ToList();
+
+                        if (result.Count() > 1)
+                        {
+                            Console.WriteLine(prod.Variants[0].Sku + " Duplicates found");
+                            foreach (Shopify_Product rprod in result)
+                            {
+
+
+                                //if (DateTime.Compare(rprod.CreatedAt.Date, DateTime.Now.AddDays(-3)) > 0)
+                                //    Console.WriteLine(rprod.Variants[0].Sku + " - " + rprod.Title + " = New Duplicate that should be removed");
+
+                                if (rprod.PublishedAt != "")
+                                    Console.WriteLine(rprod.Variants[0].Sku + " - " + rprod.Title + " - " + rprod.PublishedAt);
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                }
+            }
+
+            return true;
+        }
+
+
 
         public async Task<bool> Process_DataFile(SupplierType stype, string filename, bool extractFile = true)
         {

@@ -156,14 +156,17 @@ namespace backoffice
         {
             get
             {
-                return DateTime.Parse(this.mmtproduct.ETA);
+                return (this.mmtproduct.ETA == null) ? DateTime.MinValue : DateTime.Parse(this.mmtproduct.ETA);
             }
         }
         public override string Status
         {
             get
             {
-                return this.mmtproduct.Status.StatusName;
+                if (this.mmtproduct.Status == null)
+                    return (this.Available > 0) ? "In Stock" : "Call for Availability";
+                else
+                    return this.mmtproduct.Status.StatusName;
             }
         }
 
