@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
-namespace backoffice.ShopifyAPI
+namespace mShop
 {
     public class inventory_cost_wrapper
     {
@@ -32,8 +28,6 @@ namespace backoffice.ShopifyAPI
 
         public string compare_at_price { get; set; }
     }
-
-
     public class metawrapper
     {
         [JsonProperty("metafield")]
@@ -61,7 +55,6 @@ namespace backoffice.ShopifyAPI
             value_type = mvalue_type;
         }
     }
-
     public class Prod_Availability
     {
         public string Id;
@@ -74,13 +67,11 @@ namespace backoffice.ShopifyAPI
             return Available.ToString() + " - " + ETA.ToString() + " - " + Status;
         }
     }
-
     public partial class GetMetafields
     {
         [JsonProperty("metafields")]
         public List<GetMetafield> Metafields { get; set; }
     }
-
     public partial class GetMetafield
     {
         [JsonProperty("id")]

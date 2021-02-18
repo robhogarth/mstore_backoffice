@@ -95,7 +95,7 @@ namespace backoffice
         private MMTXMLProduct mmtproduct;
         private List<string> _images;
 
-        public override string Title
+        public override string Title 
         {
             get
             {

@@ -1,19 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-
-using System.Globalization;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
-namespace backoffice.ShopifyAPI
+
+namespace mShop
 {
-    /*
-    public class Variants
-    {
-        public List<Variants>
-    }
-    */
-
     public partial class Variant
     {
         [JsonProperty("id")]

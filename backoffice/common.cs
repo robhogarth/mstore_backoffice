@@ -7,85 +7,10 @@ using System.Threading.Tasks;
 
 namespace backoffice
 {
-    /// <summary>
-    /// Bitwise return codes that Verify_Product raises to determine which verification a product fails
-    /// return code can be used to determine which fix(es) need to be applied.
-    /// 
-    /// Need this so that we can flag problems and then allow human intervention before fixing
-    /// Although some codes we may feel safe just doing automatically
-    /// </summary>
-    [Flags]
-    public enum Product_Fault_Codes
-    {
-        None                = 0b_0000_0000,
-        Invalid_Price       = 0b_0000_0001,
-        Poor_Description    = 0b_0000_0010,
-        Mismatched_Supplier = 0b_0000_0100,
-        No_ETA_Tags         = 0b_0000_1000,
-        Poor_Title          = 0b_0001_0000,
-        Product_Taxable     = 0b_0010_0000,
-        Mismatched_Vendor   = 0b_0100_0000,
-        No_mbot_Tags        = 0b_1000_0000
-    }
 
-    /// <summary>
-    /// Bitware return codes for Cost issues
-    /// First 3 options are more warnings and ordered so that
-    /// you can search for anthing higher than No_Cost to find faults
-    /// as you probably want to ignore other flags
-    /// </summary>
-    [Flags]
-    public enum Cost_Fault_Codes
-    {
-        None                    = 0b_0000_0000,
-        Price_More_Than_RRP     = 0b_0000_0001,
-        RRP_Not_Set             = 0b_0000_0010,
-        Cost_Not_Set            = 0b_0000_0100,
-        Price_Less_Than_Cost    = 0b_0000_1000,
-        Price_Is_Zero           = 0b_0001_0000,
-        Price_Not_Set           = 0b_0010_0000
-    }
-
-    /// <summary>
-    /// Bitware return codes for Description problems
-    /// </summary>
-    [Flags]
-    public enum Title_Fault_Codes
-    {
-        None            = 0b_0000_0000,
-        Too_Long        = 0b_0000_0001,
-        Invalid_Chars   = 0b_0000_0010,
-    }
-
-    public class Product_Fault_Code_Details
-    {
-        public Title_Fault_Codes Title_Fault_Code { get; set; }
-        public List<Cost_Fault_Codes> Cost_Fault_Code { get; set; }
-
-
-    }
 
     public static class common
     {
-        public static bool IsStatusCodeSuccess(HttpStatusCode code)
-        {
-            bool retval = false;
-
-            if (((int)code > 199) & ((int)code < 300))
-                retval = true;
-
-            return retval;
-        }
-
-        private static string Generate_mbot_string()
-        {
-            const string mbot_prefix = "Mbot_";
-
-            //generate new mbot string
-            string mbot_newtag = mbot_prefix + DateTime.Now.ToString();
-            return mbot_newtag.Replace(' ', '_');
-        }
-
         public static string ExtractVendorTag(string tags)
         {
             if (tags != "")
@@ -120,18 +45,6 @@ namespace backoffice
                 return "";
         }
 
-        private static bool Findmbotstring(string s)
-        {
-            if (s.Contains("Mbot"))
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
         private static bool FindShippingstring(string s)
         {
             if (s.ToLower().Contains("shipping"))
@@ -156,13 +69,13 @@ namespace backoffice
             }
         }
 
+
         /// <summary>
         /// Test to see if mbot ETA tags exist
         /// </summary>
         /// <param name="tags"></param>
         /// <returns></returns>
-
-        internal static bool DoTagsHaveETA(string tags)
+        public static bool DoTagsHaveETA(string tags)
         {
             //start true and if you find any tags aren't there then go false
 
@@ -187,7 +100,7 @@ namespace backoffice
                 string[] tagarray = tags.Split(',');
 
                 bool replaced = false;
-                for(int i = 0; i < tagarray.Length - 1; i++ )
+                for (int i = 0; i < tagarray.Length - 1; i++)
                 {
                     if (tagarray[i].ToLower().Contains(tag_ident.ToLower()))
                     {
@@ -210,7 +123,8 @@ namespace backoffice
                 return newtag;
         }
 
-        internal static bool DoesSupplierTagMatchesLocationID(long locationId, string tag)
+
+        public static bool DoesSupplierTagMatchesLocationID(long locationId, string tag)
         {
             Dictionary<string, long> locationList = SupplierProducer.GetSupplierLocationIDs();
 
@@ -219,10 +133,33 @@ namespace backoffice
             {
                 if (locId == locationId)
                     return true;
-            }          
+            }
 
             return false;
         }
+
+
+        private static string Generate_mbot_string()
+        {
+            const string mbot_prefix = "Mbot_";
+
+            //generate new mbot string
+            string mbot_newtag = mbot_prefix + DateTime.Now.ToString();
+            return mbot_newtag.Replace(' ', '_');
+        }
+
+        private static bool Findmbotstring(string s)
+        {
+            if (s.Contains("Mbot"))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
         public static bool DoTagsHavembot(string tags = "")
         {
             string[] tagarray = tags.Split(',');

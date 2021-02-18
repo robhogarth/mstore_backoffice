@@ -19,10 +19,10 @@ using System.Security.Cryptography;
 using System.CodeDom.Compiler;
 using System.Globalization;
 using System.Threading;
+using mShop;
 
-namespace backoffice.ShopifyAPI
+namespace backoffice
 {
-
     public class Availability : INotifyPropertyChanged
     {
         private HttpClient client;
@@ -212,6 +212,7 @@ namespace backoffice.ShopifyAPI
         }
 
     }
+
     public class Metafield2
     {
         public object id { get; set; }
@@ -291,128 +292,6 @@ namespace backoffice.ShopifyAPI
             return handle;
         }
 
-        public async Task<bool> AddNewProduct(MMTProduct new_prod, Supplier prod_supplier, List<string> Images = null)
-        {
-            // to add a new shopify product
-            //
-            // First we add a shopify product
-            // include:
-            //      title
-            //      Description
-            //      Vendor
-            //      Product type
-            //      Setup tags
-            //      
-            // retrieve product id from post and use it to retrive variant
-            //
-            // setup variant
-            //      non taxable
-            //      sku
-            //      barcode if available
-            //      weight
-            //      weight options
-            //      inventory management options
-            //
-            // retrieve inventory to 
-            //   set cost
-            //   set inventory item location
-
-
-            // TODO: New Product - images
-            // TODO: New Product - Product Categories
-            // TODO: New Product - weight
-            // TODO: New Product - barcode
-
-            string add_prod_uri = @"https://monpearte-it-solutions.myshopify.com/admin/api/2020-04/products.json";
-
-            CultureInfo cultureInfo = Thread.CurrentThread.CurrentCulture;
-            TextInfo textinfo = cultureInfo.TextInfo;
-
-            StringBuilder sb = new StringBuilder();
-            StringWriter sw = new StringWriter(sb);
-
-            using (JsonWriter writer = new JsonTextWriter(sw))
-            {
-                writer.Formatting = Formatting.Indented;
-
-                writer.WriteStartObject();
-                writer.WritePropertyName("product");
-                writer.WriteStartObject();
-                writer.WritePropertyName("handle");
-                writer.WriteValue(new_prod.SKU);
-                writer.WritePropertyName("title");
-                writer.WriteValue(new_prod.Title);
-                writer.WritePropertyName("body_html");
-                writer.WriteValue(new_prod.Description);
-                writer.WritePropertyName("product_type");
-                writer.WriteValue(new_prod.Category);
-                writer.WritePropertyName("published_scope");
-                writer.WriteValue("global");
-                writer.WritePropertyName("published");
-                writer.WriteValue("true");
-                writer.WritePropertyName("vendor");
-                writer.WriteValue(new_prod.Vendor.ToTitleCase());
-                
-                if (Images != null)
-                {
-                    writer.WritePropertyName("images");
-                    writer.WriteStartArray();
-
-                    foreach (string image in Images)
-                    {
-                        writer.WriteStartObject();
-                        writer.WritePropertyName("src");
-                        writer.WriteValue(image);
-                        writer.WriteEndObject();
-                    }
-
-                    writer.WriteEndArray();
-                }
-
-                writer.WriteEndObject();
-                writer.WriteEndObject();
-            }
-
-            string prod_retval = await API.Post_New_Product_Data(add_prod_uri, sw.ToString());
-            
-            Shopify_Product_Wrapper base_product_wrapper = JsonConvert.DeserializeObject<Shopify_Product_Wrapper>(prod_retval);
-            Shopify_Product base_product = base_product_wrapper.Product;
-
-            base_product.Tags = CreateTags(new_prod, prod_supplier);
-            //await API.UpdateTags(base_product.Id, base_product.Tags);
-
-            await Update_Availability(base_product, new_prod, true);
-
-            if (base_product != null)
-            {
-                Variant new_var = base_product.Variants[0];
-
-                new_var.Taxable = false;
-                new_var.Sku = new_prod.SKU;
-                new_var.RequiresShipping = true;
-                new_var.CompareAtPrice = new_prod.RRPPrice.ToString();
-                new_var.Price = (Math.Round(Convert.ToDouble(new_prod.CostPrice) * 1.12,2)).ToString();
-
-                new_var.Grams = new_prod.Weight;
-                new_var.Barcode = new_prod.Barcode;
-
-                bool var_update_retval = await API.UpdateVariant(new_var);
-
-                if (var_update_retval)
-                {
-                    InventoryItem inv_item = await API.GetInventoryItem(new_var.InventoryItemId.ToString());
-
-                    inv_item.Cost = new_prod.CostPrice.ToString();
-
-                    await API.UpdateInventory(inv_item);
-
-                    await API.ConnectInventoryItemLocation(inv_item.Id, prod_supplier.Supplier_Location_Id);
-                    await API.Remove_InventoryItemLocation(inv_item.Id, 45786103945);                             //Remove detault warehouse Mstore - Sydney
-                }
-            }
-
-            return true;
-        }
 
         private string CreateTags(Product newprod, Supplier sup)
         {
@@ -716,7 +595,7 @@ namespace backoffice.ShopifyAPI
                 response = await client.PutAsync(uri, hcontent);
 
                 retval = response.StatusCode;
-                if (common.IsStatusCodeSuccess(response.StatusCode))
+                if (mshop_common.IsStatusCodeSuccess(response.StatusCode))
                 {
                     postretry = false;
 
@@ -967,7 +846,7 @@ namespace backoffice.ShopifyAPI
                 writer.WriteEndObject();
             }
                         
-            return common.IsStatusCodeSuccess(await API.Put_Product_Data(uturi, sw.ToString()));
+            return mshop_common.IsStatusCodeSuccess(await API.Put_Product_Data(uturi, sw.ToString()));
         }
 
         public async Task<bool> republishitem(object id)
@@ -994,7 +873,7 @@ namespace backoffice.ShopifyAPI
                 writer.WriteEndObject();
             }
 
-            return common.IsStatusCodeSuccess(await API.Put_Product_Data(uturi, sw.ToString()));
+            return mshop_common.IsStatusCodeSuccess(await API.Put_Product_Data(uturi, sw.ToString()));
         }
 
 
@@ -1022,7 +901,7 @@ namespace backoffice.ShopifyAPI
 
             HttpContent content = new StringContent(sw.ToString(), Encoding.UTF8, "application/json");
 
-            return common.IsStatusCodeSuccess(await put_product_data(uturi, content));
+            return mshop_common.IsStatusCodeSuccess(await put_product_data(uturi, content));
         }
 
         public async Task<bool> updateprice(long inv_id, long variant_id, string cost, string price, string rRPInc)
@@ -1075,7 +954,7 @@ namespace backoffice.ShopifyAPI
 
                 retStatusCode = await API.put_product_data(inv_uri, inv_hcontent);
 
-                if (common.IsStatusCodeSuccess(retStatusCode))
+                if (mshop_common.IsStatusCodeSuccess(retStatusCode))
                     retcostprice = true;
             }
             catch (Exception ex)
@@ -1102,7 +981,7 @@ namespace backoffice.ShopifyAPI
 
                 retStatusCode = await put_product_data(var_uri, var_hcontent);
 
-                if (common.IsStatusCodeSuccess(retStatusCode))
+                if (mshop_common.IsStatusCodeSuccess(retStatusCode))
                     retprice = true;
             }
             catch (Exception ex)

@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace backoffice.ShopifyAPI
+namespace mShop
 {
     public class Shop_API
     {
@@ -91,7 +91,7 @@ namespace backoffice.ShopifyAPI
                 writer.WriteEndObject();
             }
 
-            return common.IsStatusCodeSuccess(await Put_Product_Data(uturi, sw.ToString()));
+            return mshop_common.IsStatusCodeSuccess(await Put_Product_Data(uturi, sw.ToString()));
         }
 
         public async Task<Locations> GetLocations()
@@ -166,7 +166,7 @@ namespace backoffice.ShopifyAPI
                 writer.WriteEndObject();
             }
 
-            return common.IsStatusCodeSuccess(await Put_Product_Data(uturi, sw.ToString()));
+            return mshop_common.IsStatusCodeSuccess(await Put_Product_Data(uturi, sw.ToString()));
         }
 
         public async Task<bool> ConnectInventoryItemLocation(object inv_id, long location_id)
@@ -188,7 +188,7 @@ namespace backoffice.ShopifyAPI
                 writer.WriteEndObject();
             }
 
-            return common.IsStatusCodeSuccess(await Post_Product_Data(uturi, sw.ToString()));
+            return mshop_common.IsStatusCodeSuccess(await Post_Product_Data(uturi, sw.ToString()));
         }
 
         public async Task<bool> UpdateInventory(InventoryItem invItem)
@@ -219,7 +219,7 @@ namespace backoffice.ShopifyAPI
                 writer.WriteEndObject();
             }
 
-            return common.IsStatusCodeSuccess(await Put_Product_Data(uturi, sw.ToString()));
+            return mshop_common.IsStatusCodeSuccess(await Put_Product_Data(uturi, sw.ToString()));
         }
 
         public async Task<bool> UpdateVariant(Variant variant)
@@ -261,7 +261,7 @@ namespace backoffice.ShopifyAPI
                 writer.WriteEndObject();
             }
 
-            return common.IsStatusCodeSuccess(await Put_Product_Data(uturi, sw.ToString()));
+            return mshop_common.IsStatusCodeSuccess(await Put_Product_Data(uturi, sw.ToString()));
         }
 
         public async Task<bool> Remove_InventoryItemLocation(object inv_id, long location_id)
@@ -361,7 +361,7 @@ namespace backoffice.ShopifyAPI
 
                 try
                 {
-                    retval = retval & common.IsStatusCodeSuccess(await Post_Product_Metafield_Data(uri, content));
+                    retval = retval & mshop_common.IsStatusCodeSuccess(await Post_Product_Metafield_Data(uri, content));
                 }
                 catch (Exception e)
                 {
@@ -642,7 +642,7 @@ namespace backoffice.ShopifyAPI
                 response = await mclient.PutAsync(uri, hcontent);
 
                 retval = response.StatusCode;
-                if (common.IsStatusCodeSuccess(response.StatusCode))
+                if (mshop_common.IsStatusCodeSuccess(response.StatusCode))
                 {
                     postretry = false;
 

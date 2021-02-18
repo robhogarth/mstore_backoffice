@@ -198,6 +198,12 @@
     <Content Include="64x64white_Vg4_icon.ico" />
     <Content Include="LogoBlack.ico" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\backoffice\backoffice.csproj">
+      <Project>{edd9d5f9-f39f-42f8-8465-d528bf4d8fb5}</Project>
+      <Name>backoffice</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>if $(ConfigurationName) == Release (

@@ -1,16 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using System.Net;
+using mShop;
 
-namespace backoffice.ShopifyAPI
+namespace backoffice
 {
 
-
-    public partial class Shopify_Product
+    public class mbot_Shopify_Product : Shopify_Product
     {
         private Shop_API _api;
 
@@ -28,7 +25,7 @@ namespace backoffice.ShopifyAPI
 
         public bool Product_Taxable()
         {
-            foreach (Variant var in this.Variants)
+            foreach (mbot_Variant var in this.Variants)
             {
                 if (var.Taxable)
                     return true;
@@ -43,7 +40,7 @@ namespace backoffice.ShopifyAPI
 
             List<Cost_Fault_Codes> retval = new List<Cost_Fault_Codes>();
 
-            foreach (Variant var in this.Variants)
+            foreach (mbot_Variant var in this.Variants)
             {
                 retval.Add(await var.VerifyPrice());
             }
@@ -85,7 +82,7 @@ namespace backoffice.ShopifyAPI
             bool retval = false;
             string sup_tag = common.ExtractSupplierTag(this.Tags);
 
-            foreach(Variant var in this.Variants)
+            foreach(mbot_Variant var in this.Variants)
             {
                 retval = retval | (await var.Verify_SupplierTags(sup_tag));
             }
@@ -235,7 +232,7 @@ namespace backoffice.ShopifyAPI
             bool retval = true;
             string sup_tag = common.ExtractSupplierTag(this.Tags);
 
-            foreach(Variant var in this.Variants)
+            foreach(mbot_Variant var in this.Variants)
             {
                 retval = retval | (await var.FixSupplierLocation(sup_tag, whatif));
             }    
@@ -246,7 +243,7 @@ namespace backoffice.ShopifyAPI
         public async Task<bool> MakeProductUntaxable(bool whatif = false)
         {
             bool retval = true;
-            foreach (Variant var in this.Variants)
+            foreach (mbot_Variant var in this.Variants)
             {
                 retval = retval | (await var.MakeProductUntaxable(whatif));
             }
@@ -256,18 +253,18 @@ namespace backoffice.ShopifyAPI
 
         public async Task<bool> UpdateETA(string avail, string status, string ETA)
         {
-            bool retval = false;
+            //TODO: This does nothing
 
-            
+            bool retval = false;
+        
 
             return retval;
         }
 
         public async Task<bool> UpdateETA()
         {
+            //TODO: This does nothing
             bool retval = false;
-
-
 
             return retval;
         }

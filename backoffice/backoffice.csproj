@@ -68,28 +68,24 @@
   <ItemGroup>
     <Compile Include="common.cs" />
     <Compile Include="mbot.cs" />
-    <Compile Include="mmtpricelist.cs" />
-    <Compile Include="mmtproducts.cs" />
-    <Compile Include="products.cs" />
+    <Compile Include="Shopify\ErrorCodes.cs" />
+    <Compile Include="Shopify\mbot_shopify_product.cs" />
+    <Compile Include="Shopify\mbot_shopify_variants.cs" />
+    <Compile Include="Shopify\shopify.cs" />
+    <Compile Include="Supplier\MMT\MMTPriceList.cs" />
+    <Compile Include="Supplier\products.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ShopifyAPI\InventoryItem.cs" />
-    <Compile Include="ShopifyAPI\mbot_shopify_product.cs" />
-    <Compile Include="ShopifyAPI\mbot_shopify_variants.cs" />
-    <Compile Include="ShopifyAPI\shopify.cs" />
-    <Compile Include="ShopifyAPI\Image.cs" />
-    <Compile Include="ShopifyAPI\Inventory_Levels.cs" />
-    <Compile Include="ShopifyAPI\Locations.cs" />
-    <Compile Include="ShopifyAPI\Option.cs" />
-    <Compile Include="ShopifyAPI\Price.cs" />
-    <Compile Include="ShopifyAPI\Product.cs" />
-    <Compile Include="ShopifyAPI\Shop_API.cs" />
-    <Compile Include="ShopifyAPI\Variant.cs" />
-    <Compile Include="ShopifyAPI\wrappers.cs" />
-    <Compile Include="supplier.cs" />
+    <Compile Include="Supplier\supplier.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\mShop\mShop.csproj">
+      <Project>{d5f26774-70cd-44e3-8351-d453fd2baf8c}</Project>
+      <Name>mShop</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
