@@ -6,7 +6,7 @@ using System.Text;
 
 namespace backoffice
 {
-    public class MMTProduct
+    public class MMTProduct_old
     {
         public string MMTCode { get; set; }
         public string ManufacturerCode { get; set; }
@@ -35,7 +35,7 @@ namespace backoffice
             {
                 RRPInc = float.Parse(fields[5]);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 RRPInc = -1;
             }
@@ -44,7 +44,7 @@ namespace backoffice
             {
                 YourBuy = float.Parse(fields[6]);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 YourBuy = -1;
             }
@@ -53,7 +53,7 @@ namespace backoffice
             {
                 Available = int.Parse(fields[7]);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 Available = -1;
             }
@@ -66,16 +66,16 @@ namespace backoffice
 
         }
 
-        public MMTProduct(string csvline)
+        public MMTProduct_old(string csvline)
         {
             csvStrToObj(csvline);
         }
 
     }
 
-    public class MMTProducts
+    public class MMTProducts_old
     {
-        public List<MMTProduct> Products = new List<MMTProduct>();
+        public List<MMTProduct_old> Products = new List<MMTProduct_old>();
 
         public bool DownloadAsCSV(string datafeedurl)
         {
@@ -94,7 +94,7 @@ namespace backoffice
 
                 foreach (string line in lines)
                 {
-                    Products.Add(new MMTProduct(line));
+                    Products.Add(new MMTProduct_old(line));
                 }
 
                 retval = true;

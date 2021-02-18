@@ -183,12 +183,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\backoffice2\backoffice.csproj">
-      <Project>{edd9d5f9-f39f-42f8-8465-d528bf4d8fb5}</Project>
-      <Name>backoffice</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.7.2">
       <Visible>False</Visible>
       <ProductName>Microsoft .NET Framework 4.7.2 %28x86 and x64%29</ProductName>
