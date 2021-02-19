@@ -111,5 +111,15 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\backoffice\backoffice.csproj">
+      <Project>{edd9d5f9-f39f-42f8-8465-d528bf4d8fb5}</Project>
+      <Name>backoffice</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\mShop\mShop.csproj">
+      <Project>{e25d51f0-593b-4e4c-bcdc-9aecf651bb52}</Project>
+      <Name>mShop</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
